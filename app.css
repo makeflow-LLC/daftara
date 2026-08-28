@@ -1,0 +1,450 @@
+/* ================= دفتر الديون — الأنماط ================= */
+
+:root{
+  --bg:#f2f4f3;
+  --surface:#ffffff;
+  --line:#e2e7e5;
+  --text:#14181f;
+  --muted:#6b7280;
+  --brand:#0e7c5a;
+  --brand-dark:#0a5d43;
+  --debt:#c62828;
+  --debt-tint:#fdeceb;
+  --debt-line:#f3c9c6;
+  --paid:#16794f;
+  --paid-tint:#e7f5ee;
+  --paid-line:#c4e5d5;
+  --warn-bg:#fdf3cf;
+  --warn-line:#efd88a;
+  --warn-text:#7a5800;
+  --wa:#1fa855;
+  --radius:14px;
+  --tap:48px;
+  --pad:16px;
+  --sat:env(safe-area-inset-top,0px);
+  --sab:env(safe-area-inset-bottom,0px);
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Naskh Arabic","Noto Sans Arabic",Tahoma,Arial,sans-serif;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+/* لا بد أن يتغلّب [hidden] على قواعد display في هذا الملف */
+[hidden]{display:none !important}
+
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:var(--font);
+  font-size:16px;
+  line-height:1.5;
+  color:var(--text);
+  background:var(--bg);
+  overscroll-behavior-y:none;
+  -webkit-text-size-adjust:100%;
+}
+
+h1,h2{margin:0;font-weight:700}
+button,input,select{font-family:inherit;font-size:16px;color:inherit}
+button{cursor:pointer}
+ul{margin:0;padding:0;list-style:none}
+
+/* الأرقام دائمًا لاتينية ومن اليسار لليمين */
+.num{
+  direction:ltr;
+  unicode-bidi:isolate;
+  display:inline-block;
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum" 1;
+}
+.cur{font-size:.72em;color:inherit;opacity:.75}
+
+/* ---------- الهيكل العام ---------- */
+.screen{
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  background:var(--bg);
+  max-width:560px;
+  margin:0 auto;
+}
+.screen[hidden]{display:none}
+
+.scroll{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:12px var(--pad) 0;
+}
+
+.topbar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:calc(var(--sat) + 8px) 12px 8px;
+  background:var(--brand);
+  color:#fff;
+  min-height:calc(var(--sat) + 56px);
+}
+.topbar-title{font-size:19px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar-id{flex:1;min-width:0}
+.topbar-id .topbar-title{font-size:18px}
+.topbar-phone{font-size:13px;opacity:.85;display:block}
+
+.icon-btn{
+  min-width:var(--tap);
+  min-height:var(--tap);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:transparent;
+  border:0;
+  color:inherit;
+  border-radius:12px;
+  padding:0;
+  flex:0 0 auto;
+}
+.icon-btn:active{background:rgba(0,0,0,.10)}
+
+.avatar{
+  width:40px;height:40px;flex:0 0 40px;
+  border-radius:50%;
+  background:rgba(255,255,255,.22);
+  color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:16px;
+}
+
+.section-title{
+  font-size:15px;
+  color:var(--muted);
+  margin:18px 2px 8px;
+  font-weight:700;
+}
+
+.card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:14px;
+  margin-bottom:10px;
+}
+.card-note{margin:0 0 10px;color:var(--muted);font-size:15px}
+.card .btn + .btn{margin-top:8px}
+.card-note.small{font-size:13px;margin:10px 0 0}
+.version-note{color:var(--muted);font-size:13px;text-align:center;padding:18px 0 calc(var(--sab) + 24px)}
+
+.empty{color:var(--muted);text-align:center;padding:26px 18px;font-size:16px;margin:0}
+.hint{color:var(--muted);text-align:center;font-size:13px;margin:10px 0 0}
+.form-err{color:var(--debt);font-size:15px;margin:-4px 0 10px;font-weight:600}
+
+/* ---------- الأزرار ---------- */
+.btn{
+  min-height:var(--tap);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  border:0;
+  border-radius:12px;
+  font-size:17px;
+  font-weight:700;
+  padding:0 18px;
+  background:#e6eae8;
+  color:var(--text);
+  transition:transform .06s ease,filter .12s ease;
+}
+.btn:active{transform:scale(.985);filter:brightness(.94)}
+.btn-lg{min-height:56px;font-size:18px}
+.full{width:100%;display:flex}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-outline{background:var(--surface);color:var(--brand);border:2px solid var(--brand)}
+.btn-debt{background:var(--debt);color:#fff}
+.btn-pay{background:var(--paid);color:#fff}
+.btn-whatsapp{background:var(--wa);color:#fff}
+.btn-danger{background:var(--debt);color:#fff}
+.btn-text{background:transparent;color:var(--muted);font-weight:600;width:100%;margin-top:2px}
+.btn-text-danger{background:transparent;color:var(--debt);font-weight:700;width:100%;margin-top:6px}
+.btn:disabled{opacity:.45}
+
+/* ---------- 1. الإعداد ---------- */
+.setup{background:var(--surface);overflow-y:auto}
+.setup-step{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  padding:calc(var(--sat) + 24px) var(--pad) calc(var(--sab) + 16px);
+  min-height:100%;
+}
+.setup-logo{text-align:center;margin-bottom:8px}
+.setup h1{font-size:24px;text-align:center;margin-bottom:8px}
+.setup-sub{color:var(--muted);text-align:center;margin:0 0 22px;font-size:16px}
+.setup-bottom{margin-top:auto;padding-top:20px}
+.setup-bottom .btn{width:100%;display:flex}
+
+.field{display:block;margin-bottom:16px}
+.field-label{display:block;font-size:15px;font-weight:700;margin-bottom:6px}
+.field input,.field select{
+  width:100%;
+  min-height:52px;
+  border:2px solid var(--line);
+  border-radius:12px;
+  padding:0 14px;
+  background:var(--surface);
+  font-size:17px;
+}
+.field input:focus,.field select:focus{outline:0;border-color:var(--brand)}
+.field select{appearance:none;background-image:linear-gradient(transparent,transparent)}
+
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tab{
+  flex:1;min-height:var(--tap);
+  border:2px solid var(--line);
+  background:var(--surface);
+  border-radius:12px;
+  font-size:16px;font-weight:700;color:var(--muted);
+}
+.tab.on{border-color:var(--brand);color:var(--brand);background:var(--paid-tint)}
+
+.guide-step{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.guide-art{flex:0 0 96px}
+.guide-text{font-size:16px}
+.guide-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:26px;height:26px;border-radius:50%;
+  background:var(--brand);color:#fff;font-weight:700;font-size:14px;
+  margin-left:6px;vertical-align:middle;
+}
+.install-now-wrap{margin-top:4px}
+.install-now-wrap .btn{width:100%;display:flex}
+
+.note{
+  display:block;
+  border-radius:12px;
+  padding:12px 14px;
+  font-size:15px;
+  margin:0 0 16px;
+}
+.note-ok{background:var(--paid-tint);border:1px solid var(--paid-line);color:var(--paid)}
+.note-warn{background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn-text)}
+
+/* ---------- 4. الرئيسية ---------- */
+.banner{
+  display:flex;align-items:center;gap:10px;
+  background:var(--warn-bg);
+  border:1px solid var(--warn-line);
+  color:var(--warn-text);
+  border-radius:var(--radius);
+  padding:10px 12px;
+  margin-bottom:10px;
+  font-size:15px;
+}
+.banner span{flex:1}
+.banner-btn{
+  min-height:var(--tap);
+  padding:0 14px;
+  border:0;border-radius:10px;
+  background:var(--warn-text);color:#fff;
+  font-weight:700;font-size:15px;
+  flex:0 0 auto;
+}
+
+.metrics{display:flex;gap:10px;margin-bottom:12px}
+.metric{
+  flex:1;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:12px;
+}
+.metric-debt{background:var(--debt-tint);border-color:var(--debt-line)}
+.metric-label{font-size:14px;color:var(--muted);margin-bottom:2px}
+.metric-value{font-size:26px;font-weight:800;line-height:1.2}
+.metric-debt .metric-value{color:var(--debt)}
+
+.search-wrap{position:relative;margin-bottom:12px}
+.search-wrap .search-icon{
+  position:absolute;inset-inline-start:14px;top:50%;transform:translateY(-50%);
+  color:var(--muted);pointer-events:none;
+}
+#search{
+  width:100%;min-height:52px;
+  border:2px solid var(--line);border-radius:12px;
+  padding:0 44px;
+  background:var(--surface);font-size:17px;
+}
+#search:focus{outline:0;border-color:var(--brand)}
+#search::-webkit-search-cancel-button{display:none}
+.search-clear{position:absolute;inset-inline-end:2px;top:50%;transform:translateY(-50%);color:var(--muted)}
+
+.list{display:flex;flex-direction:column;gap:8px}
+.row{
+  display:flex;align-items:center;gap:12px;
+  width:100%;
+  min-height:68px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:10px 14px;
+  text-align:start;
+  color:inherit;
+}
+.row:active{background:#f7f9f8}
+.row-avatar{
+  flex:0 0 44px;
+  width:44px;height:44px;flex:0 0 44px;border-radius:50%;
+  background:#eaf1ee;color:var(--brand);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:16px;
+}
+.row-main{flex:1;min-width:0;display:block}
+.row-name{display:block;font-size:17px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-sub{display:block;font-size:14px;color:var(--muted);margin-top:1px}
+.row-sub.late{color:var(--debt);font-weight:700}
+.row-sub.clear{color:var(--paid);font-weight:700}
+.row-bal{display:block;font-size:19px;font-weight:800;flex:0 0 auto;text-align:end}
+.row-bal.owed{color:var(--debt)}
+.row-bal.zero{color:var(--paid)}
+
+.fab-space{height:96px}
+.fab{
+  position:absolute;
+  inset-inline:var(--pad);
+  bottom:calc(var(--sab) + 14px);
+  min-height:56px;
+  border:0;border-radius:16px;
+  background:var(--brand);color:#fff;
+  font-size:18px;font-weight:700;
+  box-shadow:0 6px 18px rgba(14,124,90,.35);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.fab:active{background:var(--brand-dark)}
+.fab-plus{font-size:24px;line-height:1;font-weight:700}
+
+/* ---------- 2. بطاقة الزبون ---------- */
+.balance{
+  border-radius:var(--radius);
+  padding:18px 16px;
+  text-align:center;
+  margin-bottom:12px;
+  border:1px solid transparent;
+}
+.balance.owed{background:var(--debt-tint);border-color:var(--debt-line);color:var(--debt)}
+.balance.clear{background:var(--paid-tint);border-color:var(--paid-line);color:var(--paid)}
+.balance-label{font-size:15px;font-weight:700;opacity:.85}
+.balance-row{font-size:40px;font-weight:800;line-height:1.25;margin-top:2px}
+.bal-cur{font-size:22px;font-weight:700}
+@keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.07)}100%{transform:scale(1)}}
+.balance.pop .balance-row{animation:pop .32s ease}
+
+.actions{display:flex;gap:10px;margin-bottom:6px}
+.btn-action{flex:1;min-height:56px;font-size:20px}
+
+.tx-list{gap:8px}
+.tx{
+  display:flex;align-items:center;gap:12px;
+  min-height:60px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px 14px;
+  user-select:none;
+  -webkit-user-select:none;
+  -webkit-touch-callout:none;
+}
+.tx.pressing{background:#eef1f0;transform:scale(.99)}
+.tx-main{flex:1;min-width:0;display:block}
+.tx-note{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tx-date{display:block;font-size:13px;color:var(--muted);margin-top:1px}
+.tx-amount{display:block;font-size:19px;font-weight:800;flex:0 0 auto}
+.tx-amount.debt{color:var(--debt)}
+.tx-amount.payment{color:var(--paid)}
+
+.send-space{height:88px}
+.bottom-bar{
+  padding:10px var(--pad) calc(var(--sab) + 10px);
+  background:linear-gradient(to top,var(--bg) 70%,rgba(242,244,243,0));
+}
+.bottom-bar .btn{width:100%;display:flex}
+
+/* ---------- الطبقات العائمة ---------- */
+.overlay{position:fixed;inset:0;z-index:40}
+.overlay[hidden]{display:none}
+
+/* 3. لوحة الأرقام */
+.numpad{
+  display:flex;flex-direction:column;
+  overflow-y:auto;
+  background:var(--surface);
+  max-width:560px;margin:0 auto;
+  padding-bottom:calc(var(--sab) + 8px);
+}
+.numpad-top{display:flex;align-items:center;gap:6px;padding:calc(var(--sat) + 6px) 8px 0}
+.numpad-title{font-size:17px;font-weight:700}
+.numpad-display{
+  flex:1;min-height:0;
+  display:flex;flex-direction:column;justify-content:center;
+  text-align:center;padding:6px 16px 10px;
+}
+.numpad-for{font-size:14px;color:var(--muted);min-height:20px}
+.numpad-amount{font-size:44px;font-weight:800;line-height:1.2}
+.numpad.debt .numpad-amount{color:var(--debt)}
+.numpad.payment .numpad-amount{color:var(--paid)}
+.numpad-note{padding:0 var(--pad) 10px}
+#numpad-notefield{
+  width:100%;min-height:48px;
+  border:2px solid var(--line);border-radius:12px;
+  padding:0 14px;font-size:16px;background:var(--surface);
+}
+#numpad-notefield:focus{outline:0;border-color:var(--brand)}
+
+.keys{
+  flex:0 0 auto;
+  display:grid;
+  /* لوحة الأرقام من اليسار لليمين مثل لوحة الهاتف: 1 في الأعلى يسارًا */
+  direction:ltr;
+  grid-template-columns:repeat(3,1fr);
+  grid-auto-rows:minmax(64px,92px);
+  gap:8px;
+  padding:0 var(--pad);
+  align-content:end;
+}
+.key{
+  min-height:64px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#f6f8f7;
+  font-size:28px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+.key:active{background:#e4eae7}
+.key-dot{font-size:34px}
+.key-back{color:var(--muted)}
+.numpad-bottom{padding:12px var(--pad) 4px}
+
+/* الورقة السفلية */
+.sheet-wrap{display:flex;align-items:flex-end;justify-content:center}
+.sheet-backdrop,.dialog-backdrop{position:absolute;inset:0;background:rgba(10,20,16,.45)}
+.sheet{
+  position:relative;
+  width:100%;max-width:560px;
+  background:var(--surface);
+  border-radius:20px 20px 0 0;
+  padding:8px var(--pad) calc(var(--sab) + 16px);
+  max-height:92%;overflow-y:auto;
+}
+.sheet-handle{width:44px;height:5px;border-radius:3px;background:var(--line);margin:4px auto 12px}
+.sheet-title{font-size:20px;margin-bottom:14px}
+
+/* مربع التأكيد */
+.dialog-wrap{display:flex;align-items:center;justify-content:center;padding:var(--pad)}
+.dialog{
+  position:relative;
+  width:100%;max-width:400px;
+  background:var(--surface);
+  border-radius:18px;
+  padding:20px 18px 16px;
+}
+.dialog-title{font-size:19px;margin-bottom:8px}
+.dialog-msg{margin:0 0 18px;font-size:16px;color:#374151}
+.dialog-actions{display:flex;flex-direction:column;gap:8px}
