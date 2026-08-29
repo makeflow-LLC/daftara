@@ -83,6 +83,7 @@
     customers: [],
     tx: [],
     index: new Map(),
+    sort: 'recent',
     started: false
   };
 
@@ -115,19 +116,33 @@
     return round2(sum);
   }
 
-  function isOverdue(e) {
-    return e.balance > 0 && e.last && daysSince(e.last) > OVERDUE_DAYS;
+  // التأخير يُقاس بعمر أقدم دين لم يُسدَّد، لا بآخر حركة
+  function overdueDays(e) {
+    if (e.balance <= 0) return 0;
+    var oldest = null;
+    e.tx.forEach(function (t) {
+      if (t.type === 'debt' && (oldest === null || t.date < oldest)) oldest = t.date;
+    });
+    if (!oldest) return 0;
+    return Math.max(0, Math.floor((Date.now() - new Date(oldest).getTime()) / 86400000));
   }
 
-  function subline(e) {
-    if (!e.tx.length) return { text: 'لا توجد حركات', cls: '' };
-    var d = daysSince(e.last);
-    if (isOverdue(e)) return { text: 'متأخر ' + d + ' يوم', cls: 'late' };
-    if (e.balance === 0) return { text: 'سدّد بالكامل', cls: 'clear' };
-    if (e.balance < 0) return { text: 'له رصيد عندك', cls: 'clear' };
-    if (d === 0) return { text: 'آخر حركة اليوم', cls: '' };
-    if (d === 1) return { text: 'آخر حركة أمس', cls: '' };
-    return { text: 'آخر حركة قبل ' + d + ' يوم', cls: '' };
+  function isOverdue(e) { return overdueDays(e) >= OVERDUE_DAYS; }
+
+  function whenLabel(iso) {
+    var ts = new Date(iso).getTime();
+    if (isNaN(ts)) return '';
+    var n = new Date();
+    var midnight = new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
+    if (ts >= midnight) return 'اليوم';
+    if (ts >= midnight - 86400000) return 'أمس';
+    var days = Math.floor((midnight - ts) / 86400000) + 1;
+    if (days < 7) return 'قبل ' + days + ' أيام';
+    return fmtDate(iso);
+  }
+
+  function lastLabel(e) {
+    return e.tx.length ? 'آخر حركة ' + whenLabel(e.last) : 'لا حركات';
   }
 
   function loadData() {
@@ -352,12 +367,22 @@
 
   /* ---------------- 4. الشاشة الرئيسية ---------------- */
   function renderHome() {
-    $('home-shop').textContent = S.shopName || 'دفتر الديون';
+    $('home-shop').textContent = S.shopName || 'دفترة';
     $('metric-total').textContent = fmt(totalOwed());
     $('metric-cur').textContent = S.currency;
     $('metric-count').textContent = fmt(S.customers.length);
     renderBackupBanner();
+    renderSortBar();
     renderCustomerList();
+  }
+
+  function renderSortBar() {
+    var late = 0;
+    S.index.forEach(function (e) { if (isOverdue(e)) late++; });
+    $('sort-late').textContent = late ? 'متأخرون · ' + late : 'متأخرون';
+    Array.prototype.forEach.call($('sortbar').children, function (b) {
+      b.classList.toggle('on', b.dataset.sort === S.sort);
+    });
   }
 
   function backupOverdueDays() {
@@ -371,56 +396,90 @@
     $('backup-banner').hidden = !show;
     if (!show) return;
     $('backup-banner-text').textContent = (d === null)
-      ? 'لم تحفظ نسخة احتياطية بعد. احفظ نسخة حتى لا تفقد دفترك.'
+      ? 'لم تحفظ نسخة احتياطية بعد.'
       : 'آخر نسخة احتياطية قبل ' + d + ' يوم.';
   }
 
   function sortedCustomers() {
     var list = [];
     S.index.forEach(function (e) { list.push(e); });
-    list.sort(function (a, b) {
-      var ao = isOverdue(a) ? 0 : 1;
-      var bo = isOverdue(b) ? 0 : 1;
-      if (ao !== bo) return ao - bo;
-      if (b.balance !== a.balance) return b.balance - a.balance;
-      return norm(a.c.name) < norm(b.c.name) ? -1 : 1;
+    if (S.sort === 'late') {
+      return list.filter(isOverdue).sort(function (a, b) {
+        return overdueDays(b) - overdueDays(a);
+      });
+    }
+    if (S.sort === 'debt') {
+      return list.sort(function (a, b) { return b.balance - a.balance; });
+    }
+    if (S.sort === 'name') {
+      return list.sort(function (a, b) { return a.c.name.localeCompare(b.c.name, 'ar'); });
+    }
+    return list.sort(function (a, b) {                 // الأحدث حركةً
+      var la = a.last ? new Date(a.last).getTime() : 0;
+      var lb = b.last ? new Date(b.last).getTime() : 0;
+      return lb - la;
     });
-    return list;
   }
 
   function renderCustomerList() {
-    var q = norm($('search').value);
-    $('search-clear').hidden = !$('search').value;
+    var raw = $('search').value;
+    var q = norm(raw);
+    var digits = q.replace(/\D/g, '');
+    $('search-clear').hidden = !raw;
+
     var list = sortedCustomers().filter(function (e) {
       if (!q) return true;
-      return norm(e.c.name).indexOf(q) !== -1 ||
-        String(e.c.phone || '').replace(/\D/g, '').indexOf(q.replace(/\D/g, '')) !== -1 && q.replace(/\D/g, '') !== '';
+      if (norm(e.c.name).indexOf(q) !== -1) return true;
+      return digits !== '' &&
+        String(e.c.phone || '').replace(/\D/g, '').indexOf(digits) !== -1;
     });
 
     $('customer-list').innerHTML = list.map(function (e) {
-      var s = subline(e);
-      var balCls = e.balance > 0 ? 'owed' : 'zero';
+      var owed = e.balance > 0;
+      var od = overdueDays(e);
+      var amount = owed
+        ? '<span class="row-amount num">' + fmt(e.balance) + '</span>'
+        : (e.balance < 0
+            ? '<span class="row-amount num credit">' + fmtSigned(e.balance) + '</span>'
+            : '<span class="row-amount settled">مسدّد</span>');
       return '<li><button class="row" type="button" data-id="' + e.c.id + '">' +
-        '<span class="row-avatar" aria-hidden="true">' + esc(initials(e.c.name)) + '</span>' +
+        '<span class="row-mark' + (owed ? ' owed' : '') + '" aria-hidden="true">' +
+          esc(String(e.c.name).trim().charAt(0)) + '</span>' +
         '<span class="row-main">' +
           '<span class="row-name">' + esc(e.c.name) + '</span>' +
-          '<span class="row-sub ' + s.cls + '">' + esc(s.text) + '</span>' +
-        '</span>' +
-        '<span class="row-bal ' + balCls + '"><span class="num">' + fmtSigned(e.balance) + '</span> ' +
-          '<span class="cur">' + esc(S.currency) + '</span></span>' +
+          '<span class="row-sub"><span>' + esc(lastLabel(e)) + '</span>' +
+            (od >= OVERDUE_DAYS ? '<span class="late">متأخر ' + od + ' يوم</span>' : '') +
+          '</span>' +
+        '</span>' + amount +
       '</button></li>';
     }).join('');
 
     var empty = $('home-empty');
-    if (list.length) {
-      empty.hidden = true;
+    empty.hidden = list.length > 0;
+    if (list.length) return;
+    var title, hint;
+    if (raw.trim()) {
+      title = 'لا نتائج';
+      hint = 'لا يوجد زبون بهذا الاسم.';
+    } else if (S.sort === 'late' && S.customers.length) {
+      title = 'لا متأخرين';
+      hint = 'لا يوجد زبون تأخر أكثر من ' + OVERDUE_DAYS + ' يوم.';
     } else {
-      empty.hidden = false;
-      empty.textContent = S.customers.length
-        ? 'لا يوجد زبون بهذا الاسم.'
-        : 'دفترك فارغ. اضغط «+ زبون جديد» لتبدأ.';
+      title = 'الدفتر فارغ';
+      hint = 'أضف أول زبون لتبدأ بتسجيل الديون والدفعات.';
     }
+    $('empty-title').textContent = title;
+    $('empty-hint').textContent = hint;
   }
+
+  $('sortbar').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.sort');
+    if (!b || b.dataset.sort === S.sort) return;
+    S.sort = b.dataset.sort;
+    renderSortBar();
+    renderCustomerList();
+    $('home-scroll').scrollTop = 0;
+  });
 
   $('customer-list').addEventListener('click', function (e) {
     var btn = e.target.closest('.row');
