@@ -265,42 +265,28 @@
   </div>
 </section>
 
-<!-- ============ 3. لوحة الأرقام ============ -->
-<div id="numpad" class="overlay numpad" hidden>
-  <div class="numpad-top">
-    <button id="numpad-close" class="icon-btn" type="button" aria-label="إغلاق">
-      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.3 19.71 2.88 18.3 9.17 12 2.88 5.71 4.3 4.29l6.29 6.3 6.3-6.3z"/></svg>
-    </button>
-    <div id="numpad-title" class="numpad-title">تسجيل دين</div>
-  </div>
+<!-- ============ 3. تسجيل دين أو دفعة (شيت) ============ -->
+<div id="numpad" class="overlay sheet-wrap" hidden>
+  <div class="sheet-backdrop" data-close="1"></div>
+  <div class="sheet">
+    <div class="sheet-handle" aria-hidden="true"></div>
 
-  <div class="numpad-display">
-    <div id="numpad-for" class="numpad-for"></div>
-    <div class="numpad-amount"><span id="numpad-value" class="num">0</span> <span id="numpad-cur" class="cur">₪</span></div>
-  </div>
+    <div class="sheet-head">
+      <h2 id="numpad-title" class="sheet-title">تسجيل دين</h2>
+      <span id="numpad-for" class="sheet-sub"></span>
+    </div>
 
-  <div class="numpad-note">
-    <input id="numpad-notefield" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" placeholder="ملاحظة (اختياري): خبز، حليب…">
-  </div>
+    <div id="amount-display" class="amount-display">
+      <span id="numpad-cur" class="amount-cur">₪</span>
+      <span id="numpad-value" class="amount-value">0</span>
+    </div>
 
-  <div class="keys" id="keys">
-    <button class="key" type="button" data-k="1">1</button>
-    <button class="key" type="button" data-k="2">2</button>
-    <button class="key" type="button" data-k="3">3</button>
-    <button class="key" type="button" data-k="4">4</button>
-    <button class="key" type="button" data-k="5">5</button>
-    <button class="key" type="button" data-k="6">6</button>
-    <button class="key" type="button" data-k="7">7</button>
-    <button class="key" type="button" data-k="8">8</button>
-    <button class="key" type="button" data-k="9">9</button>
-    <button class="key key-dot" type="button" data-k=".">.</button>
-    <button class="key" type="button" data-k="0">0</button>
-    <button class="key key-back" type="button" data-k="back" aria-label="مسح رقم">
-      <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="currentColor" d="M9 4a1 1 0 0 0-.74.33l-6 6.67a1 1 0 0 0 0 1.34l6 6.67A1 1 0 0 0 9 20h11a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H9Zm3.7 4.29L15 10.59l2.3-2.3 1.4 1.42L16.42 12l2.3 2.29-1.42 1.42L15 13.41l-2.29 2.3-1.42-1.42 2.3-2.29-2.3-2.29 1.42-1.42Z"/></svg>
-    </button>
-  </div>
+    <div id="quick" class="quick"><button class="quick-btn num" type="button" data-add="5">+5</button><button class="quick-btn num" type="button" data-add="10">+10</button><button class="quick-btn num" type="button" data-add="20">+20</button><button class="quick-btn num" type="button" data-add="50">+50</button></div>
 
-  <div class="numpad-bottom">
+    <div id="keys" class="keys"><button class="key" type="button" data-k="1">1</button><button class="key" type="button" data-k="2">2</button><button class="key" type="button" data-k="3">3</button><button class="key" type="button" data-k="4">4</button><button class="key" type="button" data-k="5">5</button><button class="key" type="button" data-k="6">6</button><button class="key" type="button" data-k="7">7</button><button class="key" type="button" data-k="8">8</button><button class="key" type="button" data-k="9">9</button><button class="key" type="button" data-k="00">00</button><button class="key" type="button" data-k="0">0</button><button class="key key-back" type="button" data-k="back" aria-label="مسح رقم"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path d="M9 4a1 1 0 0 0-.74.33l-6 6.67a1 1 0 0 0 0 1.34l6 6.67A1 1 0 0 0 9 20h11a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H9Z" opacity="0.2"/><path d="M20 3H9a2 2 0 0 0-1.49.67l-6 6.66a2 2 0 0 0 0 2.68l6 6.66A2 2 0 0 0 9 21h11a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3Zm1 15a1 1 0 0 1-1 1H9l-6-6.67L9 5h11a1 1 0 0 1 1 1Zm-3.29-9.29L14.41 12l2.3 2.29-1.42 1.42L13 13.41l-2.29 2.3-1.42-1.42L11.59 12l-2.3-2.29 1.42-1.42L13 10.59l2.29-2.3Z"/></svg></button></div>
+
+    <input id="numpad-notefield" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" placeholder="ملاحظة (اختياري)">
+
     <button id="numpad-confirm" class="btn btn-lg full" type="button">أضف الدين</button>
   </div>
 </div>

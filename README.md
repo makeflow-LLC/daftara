@@ -152,7 +152,7 @@ The app was verified in headless Chromium (Playwright) against the acceptance cr
 4. Home screen total equals the sum of every customer's positive balance.
 5. The WhatsApp link opens as `https://wa.me/970599123456?text=…` with the statement
    correctly percent-encoded.
-6. Every interactive element passes a 48px hit-area check (number pad keys are 64px+,
+6. Every interactive element passes a 48px hit-area check (number pad keys are 56px,
    primary buttons 56px).
 
 Plus the edge cases: overdue sorting and the red "متأخر N يوم" sub-line, the 7-day backup
@@ -165,6 +165,9 @@ phone numbers written as `0599…`, `599…`, `+972…`, `00970…`.
 - **Number pad direction.** The keypad is laid out left-to-right (1 top-left, like every
   phone dialer and calculator) even though the rest of the UI is RTL, because amounts use
   Latin digits.
+- **Whole amounts only.** The keypad has a `00` key instead of a decimal point, plus
+  `+5 / +10 / +20 / +50` shortcuts. Amounts recorded before this change keep their exact
+  decimal value everywhere they are displayed — nothing is rounded after the fact.
 - **Customers with no transactions** show `لا توجد حركات` rather than `سدّد بالكامل` —
   a brand-new customer has a zero balance but has not "paid in full".
 - **Deleting a customer** is available inside the edit sheet (with a confirm dialog). It is

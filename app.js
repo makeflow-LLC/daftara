@@ -572,7 +572,9 @@
     });
   }
 
-  /* ---------------- 3. لوحة الأرقام ---------------- */
+  /* ---------------- 3. تسجيل دين أو دفعة (شيت) ----------------
+     مبالغ صحيحة فقط: لا فاصلة عشرية، ومفتاح 00 بدلًا منها. */
+  var MAX_DIGITS = 7;
   var np = { type: 'debt', customerId: null, buf: '' };
 
   function openNumpad(type) {
@@ -582,62 +584,60 @@
     np.customerId = v.id;
     np.buf = '';
     var e = entry(v.id);
-    $('numpad').className = 'overlay numpad ' + type;
     $('numpad-title').textContent = type === 'debt' ? 'تسجيل دين' : 'تسجيل دفعة';
-    $('numpad-for').textContent = e ? 'لـ ' + e.c.name : '';
+    $('numpad-for').textContent = e ? e.c.name : '';
     $('numpad-cur').textContent = S.currency;
     $('numpad-notefield').value = '';
-    $('numpad-notefield').placeholder = type === 'debt'
-      ? 'ملاحظة (اختياري): خبز، حليب…'
-      : 'ملاحظة (اختياري): دفعة نقدًا…';
+    $('amount-display').className = 'amount-display ' + type;
     paintNumpad();
     pushOverlay('numpad');
   }
 
+  function amountValue() { return parseInt(np.buf || '0', 10) || 0; }
+
   function paintNumpad() {
-    var amount = parseFloat(np.buf);
-    var valid = isFinite(amount) && amount > 0;
-    $('numpad-value').textContent = np.buf === '' ? '0' : np.buf;
+    var amount = amountValue();
+    $('numpad-value').textContent = fmt(amount);
     var btn = $('numpad-confirm');
-    btn.className = 'btn btn-lg full ' + (np.type === 'debt' ? 'btn-debt' : 'btn-pay');
-    btn.disabled = !valid;
-    var action = np.type === 'debt' ? 'أضف دين' : 'أضف دفعة';
-    btn.textContent = valid ? action + ' ' + fmt(amount) + ' ' + S.currency : action;
+    btn.className = 'btn btn-lg full ' + (np.type === 'debt' ? 'btn-debt' : 'btn-pay-solid');
+    btn.textContent = np.type === 'debt' ? 'أضف الدين' : 'أضف الدفعة';
+    btn.disabled = amount <= 0;
   }
 
   function pressKey(k) {
     if (k === 'back') {
       np.buf = np.buf.slice(0, -1);
-    } else if (k === '.') {
-      if (np.buf.indexOf('.') === -1) np.buf = (np.buf === '' ? '0' : np.buf) + '.';
     } else {
-      var parts = np.buf.split('.');
-      if (parts.length > 1 && parts[1].length >= 2) return;      // منزلتان كحد أقصى
-      if (parts.length === 1 && parts[0].replace('-', '').length >= 7) return;
-      if (np.buf === '0') np.buf = k;
-      else np.buf += k;
+      if (np.buf.length + k.length > MAX_DIGITS) return;
+      np.buf = (np.buf + k).replace(/^0+(?=\d)/, '');
     }
     paintNumpad();
   }
 
-  $('keys').addEventListener('click', function (e) {
-    var b = e.target.closest('.key');
-    if (!b) return;
-    pressKey(b.dataset.k);
+  $('keys').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.key');
+    if (b) pressKey(b.dataset.k);
   });
 
-  $('numpad-close').addEventListener('click', goBack);
+  $('quick').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.quick-btn');
+    if (!b) return;
+    np.buf = String(Math.min(9999999, amountValue() + Number(b.dataset.add)));
+    paintNumpad();
+  });
+
+  $('numpad').querySelector('.sheet-backdrop').addEventListener('click', goBack);
 
   $('numpad-confirm').addEventListener('click', function () {
-    var amount = round2(parseFloat(np.buf));
-    if (!isFinite(amount) || amount <= 0) return;
+    var amount = amountValue();
+    if (amount <= 0) return;
     var note = $('numpad-notefield').value.trim();
     var cid = np.customerId;
     $('numpad-confirm').disabled = true;
     DB.addTransaction(cid, np.type, amount, note)
       .then(loadData)
       .then(function () {
-        goBackThen(function () { flashBalance(); });   // إغلاق اللوحة ثم إبراز الرصيد الجديد
+        goBackThen(function () { flashBalance(); });
       })
       .catch(function () { $('numpad-confirm').disabled = false; });
   });

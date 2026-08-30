@@ -3,7 +3,7 @@
    الاستراتيجية: cache-first لهيكل التطبيق، مع اسم مخزن يحمل رقم النسخة.
    عند تحديث أي ملف: ارفع رقم CACHE_VERSION.
 ================================================================ */
-var CACHE_VERSION = 'v3';
+var CACHE_VERSION = 'v4';
 var CACHE_NAME = 'daftara-shell-' + CACHE_VERSION;
 
 var SHELL = [
