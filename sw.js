@@ -3,25 +3,39 @@
    الاستراتيجية: cache-first لهيكل التطبيق، مع اسم مخزن يحمل رقم النسخة.
    عند تحديث أي ملف: ارفع رقم CACHE_VERSION.
 ================================================================ */
-var CACHE_VERSION = 'v6';
+var CACHE_VERSION = 'v7';
 var CACHE_NAME = 'daftara-shell-' + CACHE_VERSION;
 
-var SHELL = [
+// بدونها لا يفتح التطبيق أصلًا
+var CORE = [
   './',
   'index.html',
   'app.css',
   'app.js',
   'db.js',
+  'vendor/dexie.min.js'
+];
+
+// مفيدة لكن التطبيق يعمل بدونها
+var EXTRA = [
   'manifest.json',
-  'vendor/dexie.min.js',
   'icons/icon-192.png',
-  'icons/icon-512.png'
+  'icons/icon-512.png',
+  'icons/icon-maskable-512.png'
 ];
 
 self.addEventListener('install', function (event) {
   event.waitUntil(
     caches.open(CACHE_NAME).then(function (cache) {
-      return cache.addAll(SHELL);
+      // كل ملف على حدة: لو تعذّر واحد من الملفات الثانوية (استضافة تعيد 404
+      // لمسار ما مثلًا) لا يسقط التثبيت كله ويبقى التطبيق بلا نسخة مخزّنة.
+      var core = Promise.all(CORE.map(function (url) {
+        return cache.add(url);
+      }));
+      var extra = Promise.all(EXTRA.map(function (url) {
+        return cache.add(url).catch(function () { return null; });
+      }));
+      return core.then(function () { return extra; });
     }).then(function () {
       return self.skipWaiting();
     })
