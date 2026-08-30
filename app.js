@@ -157,7 +157,8 @@
   }
 
   /* ---------------- التنقل ---------------- */
-  // nav: مكدس من {t:'view',n:'home'|'customer'|'settings',id} أو {t:'ov',n:'numpad'|'sheet'|'dialog'}
+  // nav: مكدس من {t:'view',n:'home'|'customer',id}
+  //      أو {t:'ov',n:'numpad'|'sheet'|'statement'|'settings'|'dialog'}
   var nav = [{ t: 'view', n: 'home' }];
 
   function pushEntry(e) {
@@ -215,12 +216,12 @@
     var v = currentView();
     $('screen-home').hidden = v.n !== 'home';
     $('screen-customer').hidden = v.n !== 'customer';
-    $('screen-settings').hidden = v.n !== 'settings';
     if (v.n === 'home') renderHome();
     if (v.n === 'customer') renderCustomer(v.id);
-    if (v.n === 'settings') renderSettings();
     $('numpad').hidden = !overlayOpen('numpad');
     $('sheet').hidden = !overlayOpen('sheet');
+    $('statement').hidden = !overlayOpen('statement');
+    $('settings').hidden = !overlayOpen('settings');
     $('dialog').hidden = !overlayOpen('dialog');
   }
 
@@ -487,7 +488,7 @@
     $('search').focus();
   });
 
-  $('go-settings').addEventListener('click', function () { pushView('settings'); });
+  $('go-settings').addEventListener('click', openSettings);
   $('backup-banner-btn').addEventListener('click', function () { doBackup(); });
   $('fab-new').addEventListener('click', function () { openNewCustomer(); });
 
@@ -755,21 +756,31 @@
     return DEFAULT_COUNTRY_CODE + d;
   }
 
+  var STATEMENT_LINES = 6;
+
+  function statementLines(e) {
+    return e.tx.slice(0, STATEMENT_LINES).map(function (t) {
+      return {
+        when: fmtDate(t.date),
+        what: (t.type === 'debt' ? 'دين' : 'دفعة') + (t.note ? ' · ' + t.note : ''),
+        amount: (t.type === 'debt' ? '+' : '−') + fmt(t.amount),
+        type: t.type
+      };
+    });
+  }
+
   function buildStatement(e) {
     var L = [];
-    L.push(S.shopName);
-    L.push('كشف حساب');
+    L.push(S.shopName + ' — كشف حساب');
     L.push('');
     L.push('الزبون: ' + e.c.name);
     L.push('');
-    L.push('آخر الحركات:');
-    var last5 = e.tx.slice(0, 5);
-    if (!last5.length) {
+    var lines = statementLines(e);
+    if (!lines.length) {
       L.push('لا توجد حركات.');
     } else {
-      last5.forEach(function (t) {
-        L.push('• ' + fmtDate(t.date) + ' — ' + (t.type === 'debt' ? 'دين' : 'دفعة') +
-          ' ' + fmt(t.amount) + ' ' + S.currency + (t.note ? ' (' + t.note + ')' : ''));
+      lines.forEach(function (l) {
+        L.push('• ' + l.when + ' — ' + l.what + ' — ' + l.amount + ' ' + S.currency);
       });
     }
     L.push('');
@@ -780,11 +791,59 @@
     return L.join('\n');
   }
 
+  var stId = null;
+
+  function openStatement(id) {
+    var e = entry(id);
+    if (!e) return;
+    stId = id;
+    $('st-shop').textContent = S.shopName + ' — كشف حساب';
+    $('st-to').textContent = e.c.name;
+
+    var lines = statementLines(e);
+    $('st-lines').innerHTML = lines.length
+      ? lines.map(function (l) {
+          return '<div class="st-line">' +
+            '<span class="st-when">' + esc(l.when) + '</span>' +
+            '<span class="st-what">' + esc(l.what) + '</span>' +
+            '<span class="st-amount ' + l.type + '">' + esc(l.amount) + '</span>' +
+          '</div>';
+        }).join('')
+      : '<div class="st-empty">لا توجد حركات بعد.</div>';
+
+    var total = $('st-total-value').parentNode;
+    total.className = 'st-total' + (e.balance > 0 ? '' : (e.balance < 0 ? ' credit' : ' settled'));
+    $('st-total-label').textContent = e.balance > 0 ? 'الرصيد المستحق'
+      : (e.balance < 0 ? 'رصيد لصالح الزبون' : 'الحساب');
+    $('st-total-value').textContent = fmt(Math.abs(e.balance));
+
+    var phone = normalizePhone(e.c.phone);
+    $('st-target').textContent = phone
+      ? 'إرسال إلى ' + e.c.phone
+      : 'لا يوجد رقم هاتف لهذا الزبون';
+    $('st-send').disabled = !phone;
+    pushOverlay('statement');
+  }
+
+  $('st-cancel').addEventListener('click', goBack);
+  $('statement').querySelector('.sheet-backdrop').addEventListener('click', goBack);
+
+  $('st-send').addEventListener('click', function () {
+    var e = entry(stId);
+    if (!e) return;
+    var phone = normalizePhone(e.c.phone);
+    if (!phone) return;
+    var url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(buildStatement(e));
+    var w = window.open(url, '_blank', 'noopener');
+    if (!w) window.location.href = url;
+    goBack();
+  });
+
+  // زر «أرسل كشف الحساب» في صفحة الزبون: بلا رقم نطلبه أولًا، وإلا نعرض المعاينة
   function sendStatement(id) {
     var e = entry(id);
     if (!e) return;
-    var phone = normalizePhone(e.c.phone);
-    if (!phone) {
+    if (!normalizePhone(e.c.phone)) {
       openEditCustomer(id, {
         msg: 'أضف رقم هاتف الزبون لإرسال كشف الحساب عبر واتساب.',
         focusPhone: true,
@@ -792,47 +851,45 @@
       });
       return;
     }
-    var url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(buildStatement(e));
-    var w = window.open(url, '_blank', 'noopener');
-    if (!w) window.location.href = url;
+    openStatement(id);
   }
 
-  /* ---------------- 5. الإعدادات ---------------- */
-  function renderSettings() {
+  /* ---------------- 6. الإعدادات (شيت) ---------------- */
+  function openSettings() {
     $('set-shop').value = S.shopName;
     fillCurrencySelect($('set-currency'), S.currency);
-    $('last-backup').textContent = S.lastBackupAt
-      ? 'آخر نسخة احتياطية: ' + fmtDate(S.lastBackupAt) + ' (قبل ' + daysSince(S.lastBackupAt) + ' يوم)'
-      : 'لم تحفظ أي نسخة بعد.';
+    $('info-count').textContent = fmt(S.customers.length);
+    $('info-total').textContent = fmt(totalOwed()) + ' ' + S.currency;
+    $('info-backup').textContent = S.lastBackupAt
+      ? fmtDate(S.lastBackupAt) + ' (قبل ' + daysSince(S.lastBackupAt) + ' يوم)'
+      : 'لم تحفظ نسخة بعد';
     $('persist-note').textContent = S.persistGranted
-      ? 'التخزين الدائم مفعّل ✓ — لن يمسح المتصفح دفترك تلقائيًا.'
-      : 'التخزين الدائم غير مفعّل. قد يمسح المتصفح البيانات عند امتلاء الذاكرة. احفظ نسخة احتياطية بانتظام.';
+      ? 'حماية التخزين مفعّلة — لن يمسح المتصفح دفترك تلقائيًا.'
+      : 'حماية التخزين غير مفعّلة. قد يمسح المتصفح البيانات عند امتلاء الذاكرة، فاحفظ نسخة بانتظام.';
     $('btn-persist').hidden = S.persistGranted;
+    pushOverlay('settings');
   }
 
-  $('set-back').addEventListener('click', goBack);
+  $('set-cancel').addEventListener('click', goBack);
+  $('settings').querySelector('.sheet-backdrop').addEventListener('click', goBack);
 
-  var shopTimer = null;
-  $('set-shop').addEventListener('input', function () {
-    var v = $('set-shop').value.trim();
-    if (!v) return;
-    S.shopName = v;
-    clearTimeout(shopTimer);
-    shopTimer = setTimeout(function () { DB.setSetting('shopName', v); }, 300);
+  $('settings-form').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var name = $('set-shop').value.trim();
+    if (name) S.shopName = name;
+    S.currency = $('set-currency').value || DEFAULT_CURRENCY;
+    Promise.all([
+      DB.setSetting('shopName', S.shopName),
+      DB.setSetting('currency', S.currency)
+    ]).then(function () { goBack(); });
   });
-  $('set-shop').addEventListener('blur', function () {
-    if (!$('set-shop').value.trim()) $('set-shop').value = S.shopName;
-  });
-  $('set-currency').addEventListener('change', function () {
-    S.currency = $('set-currency').value;
-    DB.setSetting('currency', S.currency).then(render);
-  });
+
   $('btn-persist').addEventListener('click', function () {
     requestPersist().then(function (granted) {
-      render();
-      if (!granted) {
-        alertBox('لم يُفعَّل', 'المتصفح لم يفعّل التخزين الدائم. أضف التطبيق إلى الشاشة الرئيسية واحفظ نسخة احتياطية بانتظام.');
-      }
+      $('persist-note').textContent = granted
+        ? 'حماية التخزين مفعّلة — لن يمسح المتصفح دفترك تلقائيًا.'
+        : 'المتصفح لم يفعّل الحماية. أضف التطبيق إلى الشاشة الرئيسية واحفظ نسخة بانتظام.';
+      $('btn-persist').hidden = granted;
     });
   });
 
@@ -873,7 +930,12 @@
         if (!done) return;
         var now = new Date().toISOString();
         S.lastBackupAt = now;
-        return DB.setSetting('lastBackupAt', now).then(render);
+        return DB.setSetting('lastBackupAt', now).then(function () {
+          if (!$('settings').hidden) {
+            $('info-backup').textContent = fmtDate(now) + ' (اليوم)';
+          }
+          render();
+        });
       });
     });
   }

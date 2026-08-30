@@ -76,7 +76,7 @@ var CACHE_VERSION = 'v1';   // → 'v2'
 
 | File | What it does |
 | --- | --- |
-| `index.html` | All five screens as static markup; JS fills in the dynamic parts. |
+| `index.html` | Setup, home and customer screens plus the four bottom sheets, as static markup; JS fills in the dynamic parts. |
 | `app.css` | Everything visual. Mobile-first, RTL, system fonts only. |
 | `db.js` | Dexie setup, all IndexedDB reads/writes, backup validation. Exposes `window.DB`. |
 | `app.js` | Screens, navigation, number pad, WhatsApp statement, backup/restore. |
@@ -108,7 +108,7 @@ var DEFAULT_CURRENCY     = '₪';
 var DEFAULT_COUNTRY_CODE = '970';   // prefixed onto local phone numbers for wa.me links
 var FREE_CUSTOMER_LIMIT  = 25;      // new customers blocked past this, with an explanation
 var BACKUP_REMINDER_DAYS = 7;       // yellow banner on the home screen after this long
-var OVERDUE_DAYS         = 30;      // "متأخر N يوم" past this many days since last activity
+var OVERDUE_DAYS         = 30;      // "متأخر N يوم" once the oldest unpaid debt is this old
 ```
 
 The currency list offered in setup and settings is the `CURRENCIES` array just below them.
@@ -174,6 +174,11 @@ phone numbers written as `0599…`, `599…`, `+972…`, `00970…`.
   the escape hatch for a typo, and for freeing a slot once the free limit is reached.
 - **Overpayment** (a negative balance) is shown as `رصيد لصالح الزبون` in green rather than
   being treated as an error.
+- **Settings, restore and storage protection** live in the settings sheet even though the
+  design handoff only drew the shop name, the info lines and the backup button. Dropping
+  restore would have removed half of the backup story.
+- **The statement preview shows exactly what is sent** — the same six lines, the same
+  total. A preview that differs from the message would be worse than no preview.
 
 ## Not in scope
 
