@@ -255,7 +255,7 @@
 
   $('dialog-ok').addEventListener('click', function () { closeDialog(true); goBack(); });
   $('dialog-cancel').addEventListener('click', function () { closeDialog(false); goBack(); });
-  $('dialog').querySelector('.dialog-backdrop').addEventListener('click', function () {
+  $('dialog').querySelector('.sheet-backdrop').addEventListener('click', function () {
     closeDialog(false); goBack();
   });
 

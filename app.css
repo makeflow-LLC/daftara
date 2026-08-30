@@ -672,7 +672,8 @@ ul{margin:0;padding:0;list-style:none}
 #numpad-confirm{margin-top:var(--space-4)}
 
 .sheet-wrap{display:flex;align-items:flex-end;justify-content:center}
-.sheet-backdrop,.dialog-backdrop{position:absolute;inset:0;background:rgba(45,43,43,.42)}
+.sheet-backdrop{position:absolute;inset:0;background:rgba(45,43,43,.42);animation:fadeIn .16s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .sheet{
   position:relative;
   width:100%;max-width:430px;
@@ -680,6 +681,7 @@ ul{margin:0;padding:0;list-style:none}
   border-radius:var(--radius-lg) var(--radius-lg) 0 0;
   padding:var(--space-2) var(--space-4) calc(var(--sab) + var(--space-4));
   max-height:92%;overflow-y:auto;
+  overscroll-behavior:contain;
   box-shadow:var(--shadow-lg);
   animation:sheetIn .22s cubic-bezier(.2,.8,.2,1);
 }
@@ -688,17 +690,5 @@ ul{margin:0;padding:0;list-style:none}
 .sheet-title{font-size:22px;font-weight:700;margin-bottom:var(--space-3)}
 .sheet .btn + .btn{margin-top:var(--space-2)}
 
-.dialog-wrap{display:flex;align-items:center;justify-content:center;padding:var(--space-4)}
-.dialog{
-  position:relative;
-  width:100%;max-width:400px;
-  background:var(--color-bg);
-  border-radius:var(--radius-lg);
-  padding:var(--space-4);
-  box-shadow:var(--shadow-lg);
-  animation:sheetIn .22s cubic-bezier(.2,.8,.2,1);
-}
-.dialog-title{font-size:22px;font-weight:700;margin-bottom:var(--space-2)}
-.dialog-msg{margin:0 0 var(--space-4);font-size:15px;line-height:1.6;color:var(--color-neutral-800)}
-.dialog-actions{display:flex;flex-direction:column;gap:var(--space-2)}
+.dialog-msg{margin:0 0 var(--space-4);font-size:16px;line-height:1.6;color:var(--color-neutral-800)}
 

@@ -11,7 +11,7 @@ analytics, no cookies.
 - One dependency: [Dexie.js](https://dexie.org/) (IndexedDB wrapper), loaded from a CDN
   with a local copy in `vendor/` as a fallback.
 - Works fully offline after the first load, including a cold start in airplane mode.
-- ~85 KB of app code, CSS, HTML and icons (Dexie adds ~94 KB).
+- ~107 KB of app code, CSS, HTML and icons (Dexie adds ~94 KB).
 
 ## Run it locally
 
@@ -123,7 +123,7 @@ download.
 
 Restore validates the file before touching anything — shape, types, `type` being
 `debt`/`payment`, and transactions pointing at a customer that exists (orphans are
-dropped). It then shows a confirm dialog stating exactly what will be replaced, and only
+dropped). It then shows a confirm sheet stating exactly what will be replaced, and only
 then clears and reloads the tables. Record ids are preserved, so a restore round-trips
 byte-for-byte.
 
@@ -170,8 +170,10 @@ phone numbers written as `0599…`, `599…`, `+972…`, `00970…`.
   decimal value everywhere they are displayed — nothing is rounded after the fact.
 - **Customers with no transactions** show `لا توجد حركات` rather than `سدّد بالكامل` —
   a brand-new customer has a zero balance but has not "paid in full".
-- **Deleting a customer** is available inside the edit sheet (with a confirm dialog). It is
+- **Deleting a customer** is available inside the edit sheet (with a confirm sheet). It is
   the escape hatch for a typo, and for freeing a slot once the free limit is reached.
+- **Every modal is a bottom sheet**, confirms included, so the buttons land under the thumb
+  of someone holding the phone one-handed instead of in the middle of the screen.
 - **Overpayment** (a negative balance) is shown as `رصيد لصالح الزبون` in green rather than
   being treated as an error.
 - **Settings, restore and storage protection** live in the settings sheet even though the

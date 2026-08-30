@@ -335,16 +335,15 @@
   </form>
 </div>
 
-<!-- ============ مربع التأكيد ============ -->
-<div id="dialog" class="overlay dialog-wrap" hidden>
-  <div class="dialog-backdrop" data-close="1"></div>
-  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title">
-    <h2 id="dialog-title" class="dialog-title"></h2>
+<!-- ============ شيت التأكيد ============ -->
+<div id="dialog" class="overlay sheet-wrap" hidden>
+  <div class="sheet-backdrop" data-close="1"></div>
+  <div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="sheet-head"><h2 id="dialog-title" class="sheet-title"></h2></div>
     <p id="dialog-msg" class="dialog-msg"></p>
-    <div class="dialog-actions">
-      <button id="dialog-ok" class="btn btn-lg full" type="button">تأكيد</button>
-      <button id="dialog-cancel" class="btn btn-outline btn-lg full" type="button">إلغاء</button>
-    </div>
+    <button id="dialog-ok" class="btn btn-lg full" type="button">تأكيد</button>
+    <button id="dialog-cancel" class="btn btn-text" type="button">إلغاء</button>
   </div>
 </div>
 
