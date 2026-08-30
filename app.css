@@ -406,32 +406,98 @@ ul{margin:0;padding:0;list-style:none}
   color:var(--color-neutral-700);
 }
 
-/* ---------------- 6. شاشات لم يُعَد تصميمها بعد ----------------
-   تأخذ التوكنز الجديدة كي لا تتنافر مع الرئيسية، وستُعاد بناؤها
-   واحدة تلو الأخرى حسب ملف التسليم. */
-.topbar{
+/* ---------------- 6. صفحة الزبون ---------------- */
+.cust-head{
+  flex:none;
   display:flex;
   align-items:center;
-  gap:var(--space-2);
-  padding:calc(var(--sat) + var(--space-2)) var(--space-2) var(--space-2);
-  min-height:calc(var(--sat) + 56px);
-  flex:none;
+  gap:4px;
+  padding:calc(var(--sat) + var(--space-4)) var(--space-2) var(--space-2);
 }
-.topbar-title{font-size:20px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.topbar-id{flex:1;min-width:0;padding:0 6px}
-.topbar-id .topbar-title{font-size:20px}
-.topbar-phone{display:block;font-size:13px;color:var(--color-neutral-700)}
-
-.avatar{
-  width:42px;height:42px;flex:none;
-  border-radius:50%;
-  display:grid;place-items:center;
-  background:var(--color-neutral-200);
+.cust-id{flex:1;min-width:0;padding:0 6px}
+.cust-name{
+  font-size:20px;font-weight:700;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.cust-sub{
+  display:flex;
+  gap:8px;
+  font-size:13px;
   color:var(--color-neutral-700);
+}
+.cust-sub .late{color:var(--color-accent-2-700);flex:none}
+.cust-sub .late:empty{display:none}
+
+.balance{flex:none;padding:var(--space-4) var(--space-4) var(--space-6)}
+.balance-row{
+  direction:ltr;
+  display:flex;align-items:baseline;justify-content:flex-end;gap:10px;
+  margin-top:4px;
   font-family:var(--font-num);
-  font-weight:600;font-size:18px;
+  color:var(--color-neutral-700);
+}
+.balance.owed .balance-row{color:var(--color-accent-2-700)}
+.balance.credit .balance-row{color:var(--brand-700)}
+.balance-row .num{font-size:66px;font-weight:600;line-height:1}
+.bal-cur{font-size:22px;opacity:.6}
+@keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.05)}100%{transform:scale(1)}}
+.balance.pop .balance-row{animation:pop .32s ease}
+
+.actions{
+  flex:none;
+  display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);
+  padding:0 var(--space-4) var(--space-6);
+}
+.btn-action{min-height:56px;font-size:18px}
+
+.tx-head{
+  flex:none;
+  display:flex;align-items:baseline;gap:var(--space-2);
+  padding:0 var(--space-4) var(--space-2);
+  border-bottom:1px solid var(--color-divider);
+}
+.tx-count{font-size:13px;color:var(--color-neutral-600)}
+
+#cust-scroll{padding-bottom:110px}
+
+.tx-list{display:block}
+.tx{
+  display:flex;align-items:center;gap:var(--space-3);
+  padding:var(--space-3) var(--space-4);
+  border-top:1px solid var(--color-hairline);
+}
+.tx:first-child{border-top:0}
+.tx-main{flex:1;min-width:0;display:block}
+.tx-label{
+  display:block;font-size:16px;font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.tx.debt .tx-label,.tx.debt .tx-amount{color:var(--color-accent-2-700)}
+.tx.payment .tx-label,.tx.payment .tx-amount{color:var(--brand-700)}
+.tx-when{display:block;font-size:13px;color:var(--color-neutral-700);margin-top:2px}
+.tx-amount{flex:none;font-size:20px;font-weight:600}
+.tx-del{color:var(--color-neutral-600)}
+.tx-del:active{color:var(--color-accent-2-700);background:var(--color-accent-2-100)}
+
+.empty-line{
+  padding:var(--space-8) var(--space-4);
+  text-align:center;
+  font-size:16px;
+  color:var(--color-neutral-700);
+  margin:0;
 }
 
+/* ---------------- 7. شاشات لم يُعَد تصميمها بعد ---------------- */
+.topbar{
+  flex:none;
+  display:flex;align-items:center;gap:var(--space-2);
+  padding:calc(var(--sat) + var(--space-4)) var(--space-2) var(--space-2);
+}
+.topbar-title{
+  flex:1;min-width:0;
+  font-size:20px;font-weight:700;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
 .legacy-pad{padding:0 var(--space-4)}
 #screen-settings .scroll{padding:0 var(--space-4)}
 #screen-settings .section-title{padding-inline:0}
@@ -473,47 +539,6 @@ ul{margin:0;padding:0;list-style:none}
 }
 .field input:focus,.field select:focus{outline:0;border-color:var(--brand)}
 .field select{appearance:none;background-image:linear-gradient(transparent,transparent)}
-
-.balance{padding:var(--space-4) var(--space-4) var(--space-6)}
-.balance-label{font-size:12px;letter-spacing:.14em;color:var(--color-neutral-700)}
-.balance-row{
-  direction:ltr;
-  display:flex;align-items:baseline;justify-content:flex-end;gap:10px;
-  margin-top:4px;
-  font-family:var(--font-num);
-  color:var(--color-accent-2-700);
-}
-.balance.clear .balance-row{color:var(--color-neutral-700)}
-.balance-row .num{font-size:66px;font-weight:600;line-height:1}
-.bal-cur{font-size:22px;opacity:.6}
-@keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.05)}100%{transform:scale(1)}}
-.balance.pop .balance-row{animation:pop .32s ease}
-
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);padding:0 var(--space-4) var(--space-6)}
-.btn-action{min-height:56px;font-size:18px}
-
-.tx-list{display:block}
-.tx{
-  display:flex;align-items:center;gap:var(--space-3);
-  padding:var(--space-3) var(--space-4);
-  border-top:1px solid var(--color-hairline);
-  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
-}
-.tx.pressing{background:var(--color-hover)}
-.tx-main{flex:1;min-width:0;display:block}
-.tx-note{display:block;font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tx.debt .tx-note{color:var(--color-accent-2-700)}
-.tx.payment .tx-note{color:var(--brand-700)}
-.tx-date{display:block;font-size:13px;color:var(--color-neutral-700);margin-top:2px}
-.tx-amount{flex:none;font-size:20px;font-weight:600}
-.tx-amount.debt{color:var(--color-accent-2-700)}
-.tx-amount.payment{color:var(--brand-700)}
-
-.banner{
-  display:flex;align-items:center;gap:var(--space-2);
-  margin:0 var(--space-4) var(--space-4);
-  font-size:14px;color:var(--color-neutral-800);
-}
 
 .note{display:block;border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);font-size:14px;margin:0 0 var(--space-3)}
 .note-ok{background:var(--brand-100);color:var(--brand-700)}
@@ -640,10 +665,3 @@ ul{margin:0;padding:0;list-style:none}
 .dialog-msg{margin:0 0 var(--space-4);font-size:15px;line-height:1.6;color:var(--color-neutral-800)}
 .dialog-actions{display:flex;flex-direction:column;gap:var(--space-2)}
 
-.bottom-bar{
-  flex:none;
-  padding:var(--space-3) var(--space-4) calc(var(--sab) + var(--space-4));
-  background:linear-gradient(to top,var(--color-bg) 62%,rgba(243,242,242,0));
-}
-.bottom-bar .btn{width:100%;display:flex}
-.send-space{height:88px}

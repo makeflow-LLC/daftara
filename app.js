@@ -1,4 +1,4 @@
-/* ================= دفتر الديون — منطق التطبيق =================
+/* ================= دفترة — منطق التطبيق =================
    HTML/CSS/JS فقط. لا إطار عمل، لا خادم، لا حساب.
    الرصيد يُحسب دائمًا من الحركات ولا يُخزَّن.
 ============================================================== */
@@ -67,13 +67,6 @@
       .replace(/ة/g, 'ه')
       .replace(/\s+/g, ' ');
   }
-  function initials(name) {
-    var parts = String(name || '').trim().split(/\s+/).filter(Boolean);
-    if (!parts.length) return '؟';
-    if (parts.length === 1) return parts[0].slice(0, 2);
-    return parts[0].charAt(0) + parts[1].charAt(0);
-  }
-
   /* ---------------- الحالة ---------------- */
   var S = {
     shopName: '',
@@ -503,49 +496,55 @@
     $('cust-scroll').scrollTop = 0;
   }
 
-  /* ---------------- 2. بطاقة الزبون ---------------- */
+  /* ---------------- 2. صفحة الزبون ---------------- */
+  var ICON_TRASH = '<svg class="ic" viewBox="0 0 256 256" width="19" height="19" fill="currentColor" aria-hidden="true"><path d="M200,56V208a8,8,0,0,1-8,8H64a8,8,0,0,1-8-8V56Z" opacity="0.2"/><path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/></svg>';
+
   function renderCustomer(id) {
     var e = entry(id);
     if (!e) { goBack(); return; }
     var c = e.c;
+
     $('cust-name').textContent = c.name;
-    $('cust-phone').innerHTML = c.phone ? '<span class="num">' + esc(c.phone) + '</span>' : '';
-    $('cust-phone').hidden = !c.phone;
-    $('cust-avatar').textContent = initials(c.name);
+    $('cust-phone').innerHTML = c.phone
+      ? '<span class="num">' + esc(c.phone) + '</span>'
+      : 'لا يوجد رقم هاتف';
+    var od = overdueDays(e);
+    $('cust-late').textContent = od >= OVERDUE_DAYS ? 'أقدم دين منذ ' + od + ' يوم' : '';
 
     var block = $('balance-block');
     block.classList.toggle('owed', e.balance > 0);
-    block.classList.toggle('clear', e.balance <= 0);
+    block.classList.toggle('credit', e.balance < 0);
     $('balance-label').textContent = e.balance > 0 ? 'الرصيد المستحق'
-      : (e.balance < 0 ? 'رصيد لصالح الزبون' : 'لا يوجد دين');
+      : (e.balance < 0 ? 'رصيد لصالح الزبون' : 'الحساب');
     $('balance-value').textContent = fmt(Math.abs(e.balance));
     document.querySelector('.bal-cur').textContent = S.currency;
 
+    $('tx-count').textContent = e.tx.length ? String(e.tx.length) : '';
     $('tx-list').innerHTML = e.tx.map(function (t) {
+      var label = (t.type === 'debt' ? 'دين' : 'دفعة') + (t.note ? ' · ' + t.note : '');
       var sign = t.type === 'debt' ? '+' : '−';
-      return '<li class="tx" data-id="' + t.id + '">' +
+      return '<li class="tx ' + t.type + '">' +
         '<span class="tx-main">' +
-          '<span class="tx-note">' + esc(t.note || (t.type === 'debt' ? 'دين' : 'دفعة')) + '</span>' +
-          '<span class="tx-date"><span class="num">' + esc(fmtDateTime(t.date)) + '</span></span>' +
+          '<span class="tx-label">' + esc(label) + '</span>' +
+          '<span class="tx-when">' + esc(fmtDateTime(t.date)) + '</span>' +
         '</span>' +
-        '<span class="tx-amount ' + t.type + '"><span class="num">' + sign + fmt(t.amount) + '</span> ' +
-          '<span class="cur">' + esc(S.currency) + '</span></span>' +
+        '<span class="tx-amount num">' + sign + fmt(t.amount) + '</span>' +
+        '<button class="icon-btn tx-del" type="button" data-id="' + t.id +
+          '" aria-label="حذف الحركة">' + ICON_TRASH + '</button>' +
       '</li>';
     }).join('');
     $('tx-empty').hidden = e.tx.length > 0;
-    $('tx-hint').hidden = e.tx.length === 0;
   }
 
   $('cust-back').addEventListener('click', goBack);
   $('btn-debt').addEventListener('click', function () { openNumpad('debt'); });
   $('btn-pay').addEventListener('click', function () { openNumpad('payment'); });
-  $('cust-edit').addEventListener('click', function () {
-    var v = currentView();
-    openEditCustomer(v.id);
-  });
-  $('btn-send').addEventListener('click', function () {
-    var v = currentView();
-    sendStatement(v.id);
+  $('cust-edit').addEventListener('click', function () { openEditCustomer(currentView().id); });
+  $('btn-send').addEventListener('click', function () { sendStatement(currentView().id); });
+
+  $('tx-list').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.tx-del');
+    if (b) confirmDeleteTx(Number(b.dataset.id));
   });
 
   function flashBalance() {
@@ -555,55 +554,14 @@
     b.classList.add('pop');
   }
 
-  /* حذف حركة بالضغط المطوّل */
-  (function longPressDelete() {
-    var list = $('tx-list');
-    var timer = null, el = null, firedAt = 0;
-
-    function start(ev) {
-      var t = ev.target.closest('.tx');
-      if (!t) return;
-      el = t;
-      t.classList.add('pressing');
-      timer = setTimeout(function () {
-        timer = null;
-        firedAt = Date.now();
-        t.classList.remove('pressing');
-        if (navigator.vibrate) navigator.vibrate(15);
-        confirmDeleteTx(Number(t.dataset.id));
-      }, 550);
-    }
-    function cancel() {
-      if (timer) { clearTimeout(timer); timer = null; }
-      if (el) { el.classList.remove('pressing'); el = null; }
-    }
-    list.addEventListener('touchstart', start, { passive: true });
-    list.addEventListener('touchend', cancel);
-    list.addEventListener('touchmove', cancel, { passive: true });
-    list.addEventListener('touchcancel', cancel);
-    list.addEventListener('mousedown', start);
-    list.addEventListener('mouseup', cancel);
-    list.addEventListener('mouseleave', cancel);
-    list.addEventListener('scroll', cancel);
-    list.addEventListener('contextmenu', function (ev) {
-      var t = ev.target.closest('.tx');
-      if (!t) return;
-      ev.preventDefault();
-      cancel();
-      if (Date.now() - firedAt < 1200) return; // الضغط المطوّل نفّذها بالفعل
-      confirmDeleteTx(Number(t.dataset.id));
-    });
-  })();
-
   function confirmDeleteTx(id) {
     var t = null;
     for (var i = 0; i < S.tx.length; i++) if (S.tx[i].id === id) { t = S.tx[i]; break; }
     if (!t) return;
     ask({
-      title: 'حذف الحركة؟',
-      msg: (t.type === 'debt' ? 'دين ' : 'دفعة ') + fmt(t.amount) + ' ' + S.currency +
-           ' بتاريخ ' + fmtDate(t.date) + '. لا يمكن التراجع.',
-      ok: 'احذف',
+      title: (t.type === 'debt' ? 'حذف دين ' : 'حذف دفعة ') + fmt(t.amount) + ' ' + S.currency + '؟',
+      msg: 'سيُحذف هذا السجل من دفتر الزبون ويتغير الرصيد. لا يمكن التراجع.',
+      ok: 'احذف الحركة',
       danger: true
     }).then(function (yes) {
       if (!yes) return;
@@ -902,7 +860,7 @@
         navigator.canShare({ files: [file] });
 
       var step = shareable
-        ? navigator.share({ files: [file], title: 'نسخة احتياطية — دفتر الديون' })
+        ? navigator.share({ files: [file], title: 'نسخة احتياطية — دفترة' })
             .then(function () { return true; })
             .catch(function (err) {
               if (err && err.name === 'AbortError') return null;   // ألغى المستخدم

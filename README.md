@@ -1,4 +1,4 @@
-# دفتر الديون — Debt Ledger PWA
+# دفترة — Debt Ledger PWA
 
 An offline-first, Arabic, right-to-left PWA that replaces the paper debt notebook kept
 behind the counter of a small grocery, pharmacy or butcher shop.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-<title>دفتر الديون</title>
+<title>دفترة</title>
 <meta name="theme-color" content="#0e7c5a">
 <meta name="description" content="دفتر ديون بسيط لأصحاب المحلات — يعمل بدون إنترنت.">
 <link rel="manifest" href="manifest.json">
@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="دفتر الديون">
+<meta name="apple-mobile-web-app-title" content="دفترة">
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -24,7 +24,7 @@
     <div class="setup-logo" aria-hidden="true">
       <svg viewBox="0 0 48 48" width="72" height="72"><rect x="4" y="6" width="40" height="36" rx="6" fill="#0e7c5a"/><rect x="10" y="12" width="22" height="24" rx="3" fill="#fff"/><rect x="13" y="17" width="16" height="2.6" rx="1.3" fill="#c9d3ce"/><rect x="13" y="23" width="16" height="2.6" rx="1.3" fill="#c62828"/><rect x="13" y="29" width="11" height="2.6" rx="1.3" fill="#16794f"/></svg>
     </div>
-    <h1>دفتر الديون</h1>
+    <h1>دفترة</h1>
     <p class="setup-sub">بديل دفتر الديون الورقي. يعمل بدون إنترنت، وكل شيء محفوظ على جهازك وحده.</p>
 
     <label class="field">
@@ -183,44 +183,46 @@
   </div>
 </section>
 
-<!-- ============ 2. بطاقة الزبون ============ -->
+<!-- ============ 2. صفحة الزبون ============ -->
 <section id="screen-customer" class="screen" hidden>
-  <header class="topbar">
-    <button id="cust-back" class="icon-btn" type="button" aria-label="رجوع">
-      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M10 6 4 12l6 6 1.4-1.4L7.8 13H20v-2H7.8l3.6-3.6z" transform="scale(-1,1) translate(-24,0)"/></svg>
-    </button>
-    <div id="cust-avatar" class="avatar" aria-hidden="true">؟</div>
-    <div class="topbar-id">
-      <div id="cust-name" class="topbar-title"></div>
-      <div id="cust-phone" class="topbar-phone"></div>
+
+  <header class="cust-head">
+    <button id="cust-back" class="icon-btn" type="button" aria-label="رجوع"><svg class="ic" viewBox="0 0 256 256" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M216,128l-72,72V56Z" opacity="0.2"/><path d="M221.66,122.34l-72-72A8,8,0,0,0,136,56v64H40a8,8,0,0,0,0,16h96v64a8,8,0,0,0,13.66,5.66l72-72A8,8,0,0,0,221.66,122.34ZM152,180.69V75.31L204.69,128Z"/></svg></button>
+    <div class="cust-id">
+      <div id="cust-name" class="cust-name"></div>
+      <div class="cust-sub">
+        <span id="cust-phone"></span>
+        <span id="cust-late" class="late"></span>
+      </div>
     </div>
-    <button id="cust-edit" class="icon-btn" type="button" aria-label="تعديل بيانات الزبون">
-      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25ZM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"/></svg>
-    </button>
+    <button id="cust-edit" class="icon-btn" type="button" aria-label="تعديل بيانات الزبون"><svg class="ic" viewBox="0 0 256 256" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M221.66,90.34,192,120,136,64l29.66-29.66a8,8,0,0,1,11.31,0L221.66,79A8,8,0,0,1,221.66,90.34Z" opacity="0.2"/><path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z"/></svg></button>
   </header>
 
-  <div class="scroll" id="cust-scroll">
-    <div id="balance-block" class="balance">
-      <div id="balance-label" class="balance-label">الرصيد المستحق</div>
-      <div class="balance-row"><span id="balance-value" class="num">0</span> <span class="cur bal-cur">₪</span></div>
+  <section id="balance-block" class="balance">
+    <div id="balance-label" class="label"></div>
+    <div class="balance-row">
+      <span class="bal-cur">₪</span>
+      <span id="balance-value" class="num"></span>
     </div>
+  </section>
 
-    <div class="actions">
-      <button id="btn-debt" class="btn btn-debt btn-action" type="button">دين</button>
-      <button id="btn-pay" class="btn btn-pay btn-action" type="button">دفعة</button>
-    </div>
-
-    <h2 class="section-title">سجل الحركات</h2>
-    <ul id="tx-list" class="list tx-list"></ul>
-    <p id="tx-empty" class="empty" hidden>لا توجد حركات بعد. اضغط «دين» لتسجيل أول دين.</p>
-    <p id="tx-hint" class="hint" hidden>اضغط مطولًا على أي حركة لحذفها.</p>
-    <div class="send-space"></div>
+  <div class="actions">
+    <button id="btn-debt" class="btn btn-debt btn-action" type="button"><svg class="ic" viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm48-88a8,8,0,0,1-8,8H136v32a8,8,0,0,1-16,0V136H88a8,8,0,0,1,0-16h32V88a8,8,0,0,1,16,0v32h32A8,8,0,0,1,176,128Z"/></svg>دين</button>
+    <button id="btn-pay" class="btn btn-pay btn-action" type="button"><svg class="ic" viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M16,152H48v56H16a8,8,0,0,1-8-8V160A8,8,0,0,1,16,152ZM204,56a28,28,0,0,0-12,2.71h0A28,28,0,1,0,176,85.29h0A28,28,0,1,0,204,56Z" opacity="0.2"/><path d="M230.33,141.06a24.43,24.43,0,0,0-21.24-4.23l-41.84,9.62A28,28,0,0,0,140,112H89.94a31.82,31.82,0,0,0-22.63,9.37L44.69,144H16A16,16,0,0,0,0,160v40a16,16,0,0,0,16,16H120a7.93,7.93,0,0,0,1.94-.24l64-16a6.94,6.94,0,0,0,1.19-.4L226,182.82l.44-.2a24.6,24.6,0,0,0,3.93-41.56ZM16,160H40v40H16Zm203.43,8.21-38,16.18L119,200H56V155.31l22.63-22.62A15.86,15.86,0,0,1,89.94,128H140a12,12,0,0,1,0,24H112a8,8,0,0,0,0,16h32a8.32,8.32,0,0,0,1.79-.2l67-15.41.31-.08a8.6,8.6,0,0,1,6.3,15.9ZM164,96a36,36,0,0,0,5.9-.48,36,36,0,1,0,28.22-47A36,36,0,1,0,164,96Zm60-12a20,20,0,1,1-20-20A20,20,0,0,1,224,84ZM164,40a20,20,0,0,1,19.25,14.61,36,36,0,0,0-15,24.93A20.42,20.42,0,0,1,164,80a20,20,0,0,1,0-40Z"/></svg>دفعة</button>
   </div>
 
-  <div class="bottom-bar">
-    <button id="btn-send" class="btn btn-whatsapp btn-lg" type="button">
-      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12.04 2A9.9 9.9 0 0 0 2.15 11.9c0 1.74.46 3.44 1.32 4.94L2 22l5.32-1.4a9.86 9.86 0 0 0 4.72 1.2h.01a9.9 9.9 0 0 0 0-19.8Zm5.77 14.06c-.24.68-1.4 1.3-1.94 1.34-.5.05-.96.23-3.23-.67-2.72-1.07-4.44-3.85-4.57-4.03-.14-.18-1.1-1.45-1.1-2.77 0-1.32.7-1.97.94-2.24.25-.27.54-.34.72-.34h.52c.17 0 .4-.06.62.47.24.56.8 1.94.87 2.08.07.14.12.3.02.48-.09.18-.14.3-.28.46-.14.16-.3.36-.42.48-.14.14-.29.29-.12.57.17.28.74 1.22 1.59 1.98 1.09.97 2 1.27 2.29 1.41.28.14.45.12.61-.07.17-.2.7-.82.89-1.1.18-.28.37-.23.62-.14.25.09 1.6.76 1.87.9.28.14.46.21.53.32.07.12.07.66-.17 1.34Z"/></svg>
-    أرسل كشف الحساب</button>
+  <div class="tx-head">
+    <span class="label">سجل الحركات</span>
+    <span id="tx-count" class="num tx-count"></span>
+  </div>
+
+  <div class="scroll" id="cust-scroll">
+    <ul id="tx-list" class="tx-list"></ul>
+    <p id="tx-empty" class="empty-line" hidden>لا توجد حركات بعد. ابدأ بتسجيل دين أو دفعة.</p>
+  </div>
+
+  <div class="action-bar">
+    <button id="btn-send" class="btn btn-whatsapp full" type="button"><svg class="ic" viewBox="0 0 256 256" width="21" height="21" fill="currentColor" aria-hidden="true"><path d="M128,32A96,96,0,0,0,44.89,176.07L32.42,213.46a8,8,0,0,0,10.12,10.12l37.39-12.47A96,96,0,1,0,128,32Zm24,152a80,80,0,0,1-80-80,32,32,0,0,1,32-32l16,32-12.32,18.47a48.19,48.19,0,0,0,25.85,25.85L152,136l32,16A32,32,0,0,1,152,184Z" opacity="0.2"/><path d="M187.58,144.84l-32-16a8,8,0,0,0-8,.5l-14.69,9.8a40.55,40.55,0,0,1-16-16l9.8-14.69a8,8,0,0,0,.5-8l-16-32A8,8,0,0,0,104,64a40,40,0,0,0-40,40,88.1,88.1,0,0,0,88,88,40,40,0,0,0,40-40A8,8,0,0,0,187.58,144.84ZM152,176a72.08,72.08,0,0,1-72-72A24,24,0,0,1,99.29,80.46l11.48,23L101,118a8,8,0,0,0-.73,7.51,56.47,56.47,0,0,0,30.15,30.15A8,8,0,0,0,138,155l14.62-9.74,23,11.48A24,24,0,0,1,152,176ZM128,24A104,104,0,0,0,36.18,176.88L24.83,210.93a16,16,0,0,0,20.24,20.24l34.05-11.35A104,104,0,1,0,128,24Zm0,192a87.87,87.87,0,0,1-44.06-11.81,8,8,0,0,0-6.54-.67L40,216,52.47,178.6a8,8,0,0,0-.66-6.54A88,88,0,1,1,128,216Z"/></svg>أرسل كشف الحساب</button>
   </div>
 </section>
 
@@ -259,7 +261,7 @@
       <button id="btn-persist" class="btn btn-outline btn-lg full" type="button" hidden>فعّل الحماية</button>
     </div>
 
-    <p class="version-note">دفتر الديون — كل البيانات محفوظة على هذا الجهاز فقط.</p>
+    <p class="version-note">دفترة — كل البيانات محفوظة على هذا الجهاز فقط.</p>
   </div>
 </section>
 
