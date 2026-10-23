@@ -4,6 +4,7 @@
 # كُتبت في Documents/Daftara وفيها الزبون.
 set -euo pipefail
 PKG=com.makeflow.daftara
+trap 'adb exec-out screencap -p > screenshot.png || true' EXIT
 
 # يضغط على أول عنصر نصّه (أو وصفه) يطابق $1، كما يراه UiAutomator داخل الـ WebView
 tap() {
@@ -35,8 +36,10 @@ adb shell am start -W -n $PKG/.MainActivity
 sleep 8
 
 # 1) شاشة الإعداد: «التالي» والاسم فارغ ينتظر ظهور الشاشة ويضع التركيز في حقل اسم المحل
-tap 'التالي' || { adb exec-out screencap -p > screenshot.png; exit 1; }
+tap 'التالي'
 adb shell input text 'Shop1'
+adb shell input keyevent 4   # إخفاء لوحة المفاتيح؛ كانت تغطي الزر
+sleep 1
 tap 'التالي'
 sleep 3
 
@@ -44,10 +47,9 @@ sleep 3
 tap 'زبون جديد'
 sleep 2
 adb shell input text 'Ali'
-tap 'حفظ'
+adb shell input keyevent 66  # Enter يرسل نموذج الزبون (حفظ)
 sleep 6   # النسخة التلقائية تُكتب بعد ثانيتين من آخر تعديل
 
-adb exec-out screencap -p > screenshot.png
 adb shell pidof $PKG
 
 # 3) النسخة التلقائية في ذاكرة الجوال
