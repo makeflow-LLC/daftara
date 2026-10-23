@@ -145,6 +145,10 @@ after every change to `Documents/Daftara/daftara-YYYY-MM-DD-<ledgerId>.json` (ke
 Those files survive clearing the app's data and uninstalling it; restore them with
 «استعادة نسخة», which is also offered on the first setup screen.
 
+Settings also offers a fingerprint lock (Android only). The prompt accepts the phone's own
+PIN/pattern as a fallback, the app relocks after a minute in the background, and it never
+locks when the phone has no fingerprint or PIN any more, so the owner cannot be shut out.
+
 Builds run in GitHub Actions (`.github/workflows/android.yml`): every push builds the APK and
 boots it on an emulator; pushes to `main` also publish it to Releases. Latest APK:
 <https://github.com/makeflow-LLC/daftara/releases/latest/download/daftara.apk>

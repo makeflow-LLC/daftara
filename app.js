@@ -153,6 +153,7 @@
       S.currency = s.currency || DEFAULT_CURRENCY;
       S.lastBackupAt = s.lastBackupAt || null;
       S.persistGranted = !!s.persistGranted;
+      S.lockEnabled = !!s.lockEnabled;
     });
   }
 
@@ -885,6 +886,7 @@
         : 'حماية التخزين غير مفعّلة. قد يمسح المتصفح البيانات عند امتلاء الذاكرة، فاحفظ نسخة بانتظام.';
       $('btn-persist').hidden = S.persistGranted;
     }
+    renderLockSetting();
     pushOverlay('settings');
   }
 
@@ -908,6 +910,67 @@
         ? 'حماية التخزين مفعّلة — لن يمسح المتصفح دفترك تلقائيًا.'
         : 'المتصفح لم يفعّل الحماية. أضف التطبيق إلى الشاشة الرئيسية واحفظ نسخة بانتظام.';
       $('btn-persist').hidden = granted;
+    });
+  });
+
+  /* ---------------- القفل بالبصمة (تطبيق أندرويد) ---------------- */
+  var LOCK_AFTER_MS = 60 * 1000;   // يُقفل التطبيق إن بقي في الخلفية أكثر من دقيقة
+  var locking = null;
+
+  // يعرض شاشة القفل حتى ينجح التحقق. إن لم يعد في الجوال بصمة ولا رمز قفل
+  // (أو استُعيدت نسخة من جوال آخر) لا نقفل، حتى لا يُحبس صاحب المحل خارج دفتره.
+  function unlock() {
+    if (locking) return locking;
+    locking = Native.canLock().then(function (ok) {
+      if (!ok) return;
+      $('screen-lock').hidden = false;
+      return new Promise(function (resolve) {
+        function attempt() {
+          Native.verify().then(function (pass) {
+            if (!pass) return;
+            $('screen-lock').hidden = true;
+            $('lock-open').onclick = null;
+            resolve();
+          });
+        }
+        $('lock-open').onclick = attempt;
+        attempt();
+      });
+    }).then(function () { locking = null; });
+    return locking;
+  }
+
+  if (Native.onResume) {
+    Native.onResume(function (awayMs) {
+      if (S.lockEnabled && awayMs > LOCK_AFTER_MS) unlock();
+    });
+  }
+
+  function renderLockSetting() {
+    $('btn-lock').hidden = true;
+    $('lock-note').hidden = true;
+    if (!Native.isNative) return;
+    Native.canLock().then(function (ok) {
+      $('btn-lock').hidden = !ok && !S.lockEnabled;
+      $('btn-lock').textContent = S.lockEnabled ? 'أوقف القفل بالبصمة' : 'اقفل التطبيق بالبصمة';
+      $('lock-note').hidden = false;
+      $('lock-note').textContent = !ok
+        ? 'لتفعيل القفل بالبصمة أضف بصمة أو رمز قفل للجوال من إعدادات الجوال.'
+        : S.lockEnabled
+          ? 'القفل مفعّل: يطلب التطبيق البصمة عند فتحه، وبعد دقيقة في الخلفية.'
+          : 'يطلب البصمة عند فتح التطبيق، ويقبل رمز قفل الجوال إن لم تُقرأ البصمة.';
+    });
+  }
+
+  // التفعيل والإيقاف كلاهما يحتاج البصمة: يتأكد أنها تعمل، ولا يوقفه غير صاحبها.
+  // إن لم يعد في الجوال بصمة ولا رمز فالقفل معطّل فعليًا، فيُسمح بإيقافه مباشرة.
+  $('btn-lock').addEventListener('click', function () {
+    Native.canLock().then(function (ok) {
+      return ok ? Native.verify() : S.lockEnabled;
+    }).then(function (pass) {
+      if (!pass) return;
+      S.lockEnabled = !S.lockEnabled;
+      return DB.setSetting('lockEnabled', S.lockEnabled).then(renderLockSetting);
     });
   });
 
@@ -1030,6 +1093,7 @@
   DB.open()
     .then(loadSettings)
     .then(loadData)
+    .then(function () { if (S.lockEnabled && Native.isNative) return unlock(); })
     .then(function () {
       if (!S.shopName) showSetup();
       else startApp();

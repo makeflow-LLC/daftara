@@ -569,6 +569,7 @@ ul{margin:0;padding:0;list-style:none}
 
 /* الإعداد */
 .setup{overflow-y:auto}
+.lock{z-index:60}
 .setup-step{
   flex:1;display:flex;flex-direction:column;
   padding:calc(var(--sat) + var(--space-6)) var(--space-4) calc(var(--sab) + var(--space-4));

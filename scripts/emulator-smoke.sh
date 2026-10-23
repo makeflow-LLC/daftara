@@ -86,3 +86,10 @@ f=$(adb shell ls /sdcard/Documents/Daftara/ | tr -d '\r' | grep '^daftara-.*\.js
 adb shell cat "/sdcard/Documents/Daftara/$f" > backup.json
 grep -q '"name":"Ali"' backup.json || { echo "::error::backup missing customer"; cat backup.json; exit 1; }
 echo "auto backup OK: $f"
+
+# 4) إعداد القفل بالبصمة يظهر في الإعدادات (يثبت أن إضافة البصمة تعمل داخل التطبيق)
+tap 'الإعدادات'
+sleep 2
+screen settings
+grep -q 'القفل بالبصمة' ui.xml || { echo "::error::fingerprint lock setting missing"; exit 1; }
+echo "fingerprint lock setting OK"

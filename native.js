@@ -7,6 +7,8 @@
       بيانات التطبيق أو حُذف التطبيق نفسه، وتُستعاد بزر «استعادة نسخة».
    2. مشاركة ملف النسخة (واتساب وغيره) عبر شاشة المشاركة في أندرويد،
       لأن WebView لا يدعم navigator.share.
+   3. قفل التطبيق بالبصمة، ورمز قفل الجوال بديلًا حتى لا يُحبس صاحب المحل
+      خارج دفتره إن لم تُقرأ البصمة.
 
    اسم الملف يحمل معرّف الدفتر (ledgerId)، فلو مُسحت البيانات وبدأ دفتر
    جديد فارغ في نفس اليوم لا يكتب فوق نسخة الدفتر القديم.
@@ -23,6 +25,8 @@
 
   var FS = cap.Plugins.Filesystem;
   var Share = cap.Plugins.Share;
+  var Bio = cap.Plugins.NativeBiometric;
+  var App = cap.Plugins.App;
   var DIR = 'Daftara';
   var KEEP_DAYS = 30;
   var DEBOUNCE_MS = 2000;
@@ -113,6 +117,36 @@
   // يُستدعى بعد فتح قاعدة البيانات
   Native.start = function () {
     running = running.then(autoBackup).then(prune);
+  };
+
+  /* ---------- القفل بالبصمة ---------- */
+  // هل في الجوال بصمة أو رمز قفل يمكن التحقق به؟
+  Native.canLock = function () {
+    if (!Bio) return Promise.resolve(false);
+    return Bio.isAvailable({ useFallback: true })
+      .then(function (r) { return !!(r && r.isAvailable); }, function () { return false; });
+  };
+
+  // يعرض نافذة البصمة؛ يعيد true عند النجاح وfalse عند الإلغاء أو الفشل
+  Native.verify = function () {
+    return Bio.verifyIdentity({
+      title: 'افتح دفترة',
+      subtitle: 'بالبصمة أو برمز قفل الجوال',
+      // 4 = أي بصمة/وجه، 7 = رمز قفل الجوال (PIN أو النمط) بديلًا
+      allowedBiometryTypes: [4, 7],
+      maxAttempts: 5
+    }).then(function () { return true; }, function () { return false; });
+  };
+
+  // يُستدعى عند عودة التطبيق إلى الواجهة، مع مدة الغياب بالملّي ثانية
+  Native.onResume = function (cb) {
+    if (!App) return;
+    var hiddenAt = 0;
+    App.addListener('appStateChange', function (st) {
+      if (!st.isActive) { hiddenAt = Date.now(); return; }
+      if (hiddenAt) cb(Date.now() - hiddenAt);
+      hiddenAt = 0;
+    });
   };
 
   // مشاركة ملف النسخة: يُكتب في الكاش ثم تُفتح شاشة المشاركة.
