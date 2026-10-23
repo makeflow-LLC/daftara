@@ -36,6 +36,14 @@ PY
   return 1
 }
 
+# يُخفي لوحة المفاتيح إن كانت ظاهرة فقط؛ وإلا فزر الرجوع يغلق الشاشة المفتوحة في التطبيق
+hide_kb() {
+  sleep 1
+  if adb shell dumpsys input_method | grep -q 'mInputShown=true'; then
+    adb shell input keyevent 4; sleep 1
+  fi
+}
+
 adb install -r daftara.apk
 adb shell am start -W -n $PKG/.MainActivity
 sleep 8
@@ -43,8 +51,7 @@ sleep 8
 # 1) شاشة الإعداد: «التالي» والاسم فارغ ينتظر ظهور الشاشة ويضع التركيز في حقل اسم المحل
 tap 'التالي'
 adb shell input text 'Shop1'
-adb shell input keyevent 4   # إخفاء لوحة المفاتيح؛ كانت تغطي الزر
-sleep 1
+hide_kb
 tap 'التالي'
 sleep 3
 
@@ -52,8 +59,7 @@ sleep 3
 tap 'زبون جديد'
 sleep 2
 adb shell input text 'Ali'
-adb shell input keyevent 4   # إخفاء لوحة المفاتيح
-sleep 1
+hide_kb
 tap 'حفظ'
 sleep 6   # النسخة التلقائية
 tap 'Ali' >/dev/null || true   # تحديث ui.xml للتشخيص: هل حُفظ الزبون؟ تُكتب بعد ثانيتين من آخر تعديل
