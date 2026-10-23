@@ -44,6 +44,13 @@ hide_kb() {
   fi
 }
 
+# يطبع نصوص الشاشة الحالية (للتشخيص في سجل GitHub Actions)
+screen() {
+  adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true
+  adb shell cat /sdcard/ui.xml > ui.xml 2>/dev/null || true
+  echo "[$1] $(grep -o 'text="[^"]*"' ui.xml | sed 's/text=//' | tr '\n' ' ' | head -c 400)"
+}
+
 adb install -r daftara.apk
 adb shell am start -W -n $PKG/.MainActivity
 sleep 8
@@ -56,11 +63,16 @@ tap 'التالي'
 sleep 3
 
 # 2) الشاشة الرئيسية: زبون جديد
+screen home
 tap 'زبون جديد'
 sleep 2
+screen sheet
 adb shell input text 'Ali'
 hide_kb
+screen typed
 tap 'حفظ'
+sleep 2
+screen saved
 sleep 6   # النسخة التلقائية
 tap 'Ali' >/dev/null || true   # تحديث ui.xml للتشخيص: هل حُفظ الزبون؟ تُكتب بعد ثانيتين من آخر تعديل
 
