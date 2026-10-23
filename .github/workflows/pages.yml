@@ -1,5 +1,5 @@
 # ينشر التطبيق على GitHub Pages تلقائيًا مع كل دفعة إلى main.
-# التطبيق ملفات ثابتة بلا خطوة بناء، فالمهمة كلها: خذ المجلد كما هو وانشره.
+# التطبيق ملفات ثابتة بلا خطوة بناء: ننسخ ملفات الويب وحدها (دون مجلد android) وننشرها.
 # actions/configure-pages مع enablement: true يفعّل Pages بنفسه إن لم يكن مفعّلًا.
 name: Deploy to GitHub Pages
 
@@ -28,8 +28,9 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+      - run: node scripts/build-www.mjs _site
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

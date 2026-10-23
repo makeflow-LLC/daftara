@@ -1,0 +1,8 @@
+{
+  "appId": "com.makeflow.daftara",
+  "appName": "دفترة",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#f3f2f2"
+  }
+}

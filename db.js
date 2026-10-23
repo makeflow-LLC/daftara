@@ -24,10 +24,11 @@
   }
 
   // المكتبة من الـ CDN مع نسخة محلية احتياطية.
-  // بدون إنترنت نذهب للنسخة المحلية مباشرة حتى لا ننتظر مهلة الشبكة.
+  // بدون إنترنت (أو داخل تطبيق أندرويد) نذهب للنسخة المحلية مباشرة حتى لا ننتظر مهلة الشبكة.
   function ensureDexie() {
     if (global.Dexie) return Promise.resolve();
-    var chain = (global.navigator && global.navigator.onLine === false)
+    var native = global.Capacitor && global.Capacitor.isNativePlatform && global.Capacitor.isNativePlatform();
+    var chain = (native || (global.navigator && global.navigator.onLine === false))
       ? Promise.reject(new Error('offline'))
       : loadScript(DEXIE_CDN);
     return chain

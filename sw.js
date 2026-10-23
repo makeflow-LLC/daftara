@@ -3,7 +3,7 @@
    الاستراتيجية: cache-first لهيكل التطبيق، مع اسم مخزن يحمل رقم النسخة.
    عند تحديث أي ملف: ارفع رقم CACHE_VERSION.
 ================================================================ */
-var CACHE_VERSION = 'v7';
+var CACHE_VERSION = 'v8';
 var CACHE_NAME = 'daftara-shell-' + CACHE_VERSION;
 
 // بدونها لا يفتح التطبيق أصلًا
@@ -13,6 +13,7 @@ var CORE = [
   'app.css',
   'app.js',
   'db.js',
+  'native.js',
   'vendor/dexie.min.js'
 ];
 

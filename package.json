@@ -1,0 +1,20 @@
+{
+  "name": "daftara",
+  "private": true,
+  "description": "دفترة — دفتر ديون بدون إنترنت. نفس ملفات الويب تُنشر على GitHub Pages وتُغلَّف كتطبيق أندرويد عبر Capacitor.",
+  "scripts": {
+    "www": "node scripts/build-www.mjs www",
+    "sync": "npm run www && cap sync android",
+    "apk": "npm run sync && cd android && ./gradlew assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3"
+  }
+}

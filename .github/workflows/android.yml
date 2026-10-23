@@ -1,0 +1,110 @@
+# يبني تطبيق أندرويد (APK) من نفس ملفات الويب عبر Capacitor.
+# مع كل دفعة إلى main: يُنشر الـ APK في صفحة Releases، ورابط التحميل الثابت:
+#   https://github.com/makeflow-LLC/daftara/releases/latest/download/daftara.apk
+# الدفع إلى أي فرع آخر يبني ويختبر فقط، ويرفع الـ APK كـ artifact.
+name: Android APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run sync
+
+      # مفتاح التوقيع من أسرار المستودع إن أُضيف (ANDROID_KEYSTORE_B64 وأخواته)،
+      # وإلا يُستخدم android/daftara-release.jks الموجود في المستودع.
+      - name: Signing key from secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        if: env.KEYSTORE_B64 != ''
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          {
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks"
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "KEY_ALIAS=$KEY_ALIAS"
+            echo "KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: android
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+        run: ./gradlew assembleRelease --no-daemon
+      - run: cp android/app/build/outputs/apk/release/app-release.apk daftara.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daftara-apk
+          path: daftara.apk
+
+  # يشغّل الـ APK على محاكي أندرويد ويتأكد أنه يفتح دون أن ينهار، ويحفظ لقطة شاشة.
+  smoke-test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: daftara-apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb install -r daftara.apk
+            adb shell am start -W -n com.makeflow.daftara/.MainActivity
+            sleep 20
+            adb shell pidof com.makeflow.daftara
+            adb exec-out screencap -p > screenshot.png
+            adb logcat -d | grep -iE "chromium|Capacitor|AndroidRuntime" | tail -n 80 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: emulator-screenshot
+          path: screenshot.png
+
+  release:
+    needs: [build, smoke-test]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: daftara-apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-${{ github.run_number }}
+          name: دفترة لأندرويد — نسخة ${{ github.run_number }}
+          body: |
+            حمّل `daftara.apk` على الجوال وثبّته. التحديث يُثبَّت فوق النسخة السابقة ولا يمسح الدفتر.
+            رابط ثابت لآخر نسخة دائمًا: https://github.com/${{ github.repository }}/releases/latest/download/daftara.apk
+          files: daftara.apk
+          make_latest: true

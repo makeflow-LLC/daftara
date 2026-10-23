@@ -212,6 +212,8 @@
   }
 
   function render() {
+    // مربعات التأكيد تظهر في شاشة الإعداد أيضًا (استعادة نسخة قبل بدء الدفتر)
+    $('dialog').hidden = !overlayOpen('dialog');
     if (!S.started) return;
     var v = currentView();
     $('screen-home').hidden = v.n !== 'home';
@@ -222,7 +224,6 @@
     $('sheet').hidden = !overlayOpen('sheet');
     $('statement').hidden = !overlayOpen('statement');
     $('settings').hidden = !overlayOpen('settings');
-    $('dialog').hidden = !overlayOpen('dialog');
   }
 
   /* ---------------- مربعات التأكيد ---------------- */
@@ -312,6 +313,9 @@
     S.shopName = name;
     S.currency = $('setup-currency').value || DEFAULT_CURRENCY;
 
+    // تطبيق أندرويد: بياناته خارج المتصفح ولا يحتاج خطوة «أضف إلى الشاشة الرئيسية»
+    if (Native.isNative) { finishSetup(); return; }
+
     // طلب تخزين دائم حتى لا يمسح المتصفح الدفتر
     requestPersist();
 
@@ -341,7 +345,7 @@
     });
   });
 
-  $('setup-done').addEventListener('click', function () {
+  function finishSetup() {
     Promise.all([
       DB.setSetting('shopName', S.shopName),
       DB.setSetting('currency', S.currency)
@@ -349,7 +353,9 @@
       $('screen-setup').hidden = true;
       startApp();
     });
-  });
+  }
+  $('setup-done').addEventListener('click', finishSetup);
+  $('setup-restore').addEventListener('click', function () { $('restore-file').click(); });
 
   function requestPersist() {
     if (!navigator.storage || !navigator.storage.persist) return Promise.resolve(false);
@@ -834,7 +840,8 @@
     var phone = normalizePhone(e.c.phone);
     if (!phone) return;
     var url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(buildStatement(e));
-    var w = window.open(url, '_blank', 'noopener');
+    // داخل التطبيق يفتح Capacitor الرابط في واتساب مباشرة
+    var w = Native.isNative ? null : window.open(url, '_blank', 'noopener');
     if (!w) window.location.href = url;
     goBack();
   });
@@ -863,10 +870,21 @@
     $('info-backup').textContent = S.lastBackupAt
       ? fmtDate(S.lastBackupAt) + ' (قبل ' + daysSince(S.lastBackupAt) + ' يوم)'
       : 'لم تحفظ نسخة بعد';
-    $('persist-note').textContent = S.persistGranted
-      ? 'حماية التخزين مفعّلة — لن يمسح المتصفح دفترك تلقائيًا.'
-      : 'حماية التخزين غير مفعّلة. قد يمسح المتصفح البيانات عند امتلاء الذاكرة، فاحفظ نسخة بانتظام.';
-    $('btn-persist').hidden = S.persistGranted;
+    if (Native.isNative) {
+      var a = Native.auto;
+      $('persist-note').textContent = !a
+        ? 'نسخة تلقائية تُحفظ في ذاكرة الجوال (Documents/Daftara) بعد كل تعديل.'
+        : a.error
+          ? 'تعذّر حفظ النسخة التلقائية في ذاكرة الجوال: ' + a.error
+          : 'آخر نسخة تلقائية: ' + fmtDateTime(a.at) + ' — في ' + a.file +
+            '. تبقى حتى لو حُذف التطبيق. للحماية من ضياع الجوال أرسل نسخة إلى واتساب.';
+      $('btn-persist').hidden = true;
+    } else {
+      $('persist-note').textContent = S.persistGranted
+        ? 'حماية التخزين مفعّلة — لن يمسح المتصفح دفترك تلقائيًا.'
+        : 'حماية التخزين غير مفعّلة. قد يمسح المتصفح البيانات عند امتلاء الذاكرة، فاحفظ نسخة بانتظام.';
+      $('btn-persist').hidden = S.persistGranted;
+    }
     pushOverlay('settings');
   }
 
@@ -916,7 +934,12 @@
       var shareable = file && navigator.share && navigator.canShare &&
         navigator.canShare({ files: [file] });
 
-      var step = shareable
+      var step = Native.isNative
+        ? Native.shareBackup(filename, json).catch(function () {
+            alertBox('تعذّرت المشاركة', 'لم نستطع فتح شاشة المشاركة. النسخة التلقائية في ذاكرة الجوال ما زالت محفوظة.');
+            return null;
+          })
+        : shareable
         ? navigator.share({ files: [file], title: 'نسخة احتياطية — دفترة' })
             .then(function () { return true; })
             .catch(function (err) {
@@ -969,7 +992,13 @@
           .then(loadData)
           .then(function () {
             $('search').value = '';
-            resetToHome();
+            // الاستعادة من شاشة الإعداد الأولى: الدفتر جاهز، ننتقل إليه مباشرة
+            if (!$('screen-setup').hidden && S.shopName) {
+              $('screen-setup').hidden = true;
+              startApp();
+            } else {
+              resetToHome();
+            }
             return alertBox('تمت الاستعادة', 'الدفتر الآن يحتوي على ' + S.customers.length + ' زبون.');
           });
       });
@@ -994,7 +1023,7 @@
 
   function registerSW() {
     if (!('serviceWorker' in navigator)) return;
-    if (location.protocol === 'file:') return;
+    if (location.protocol === 'file:' || Native.isNative) return;
     navigator.serviceWorker.register('sw.js').catch(function () {});
   }
 
@@ -1005,6 +1034,7 @@
       if (!S.shopName) showSetup();
       else startApp();
       registerSW();
+      if (Native.start) Native.start();
     })
     .catch(function (err) {
       fatal((err && err.message) ? err.message : 'خطأ غير معروف');

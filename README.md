@@ -80,6 +80,7 @@ var CACHE_VERSION = 'v1';   // → 'v2'
 | `app.css` | Everything visual. Mobile-first, RTL, system fonts only. |
 | `db.js` | Dexie setup, all IndexedDB reads/writes, backup validation. Exposes `window.DB`. |
 | `app.js` | Screens, navigation, number pad, WhatsApp statement, backup/restore. |
+| `native.js` | Android-only additions (auto backup to `Documents/Daftara`, native share). No-op in a browser. |
 | `sw.js` | Cache-first service worker for the app shell. |
 | `manifest.json` | Standalone, RTL, portrait, theme colour, 192/512 icons. |
 | `icons/` | PNG icons + `make-icons.py`, the script that generates them. |
@@ -130,6 +131,31 @@ byte-for-byte.
 The app also calls `navigator.storage.persist()` during setup and stores the result, so the
 browser is less likely to evict the ledger. Settings shows the current status and offers to
 request it again if it was denied.
+
+## Android app (APK)
+
+The same web files are wrapped as an Android app with [Capacitor](https://capacitorjs.com/).
+The root files stay the only source: `scripts/build-www.mjs` copies them into `www/`, and
+`npx cap sync android` copies that into the Android project. Edit the web files as usual;
+nothing under `android/app/src/main/assets` is committed.
+
+Why: in the browser, "clear site data" or clearing Chrome's storage wipes the ledger. Inside
+the app the data lives in the app's own storage, and `native.js` writes an automatic backup
+after every change to `Documents/Daftara/daftara-YYYY-MM-DD-<ledgerId>.json` (kept 30 days).
+Those files survive clearing the app's data and uninstalling it; restore them with
+«استعادة نسخة», which is also offered on the first setup screen.
+
+Builds run in GitHub Actions (`.github/workflows/android.yml`): every push builds the APK and
+boots it on an emulator; pushes to `main` also publish it to Releases. Latest APK:
+<https://github.com/makeflow-LLC/daftara/releases/latest/download/daftara.apk>
+
+Signing: the workflow uses the `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` repository secrets when set, otherwise the
+committed `android/daftara-release.jks`. Android only installs an update over an app signed
+with the same key, so pick one before handing the APK out widely and keep it.
+
+Local build (needs JDK 21 and the Android SDK): `npm ci && npm run apk`.
+Regenerate launcher icons and splash after changing `icons/`: `python3 scripts/android-icons.py`.
 
 ## Icons
 
