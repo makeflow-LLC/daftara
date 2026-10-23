@@ -75,6 +75,7 @@
       });
     }).catch(function (err) {
       Native.auto = { error: (err && err.message) || String(err) };
+      console.error('daftara auto backup failed: ' + Native.auto.error);
     });
   }
 

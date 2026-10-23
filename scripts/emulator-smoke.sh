@@ -4,7 +4,12 @@
 # كُتبت في Documents/Daftara وفيها الزبون.
 set -euo pipefail
 PKG=com.makeflow.daftara
-trap 'adb exec-out screencap -p > screenshot.png || true' EXIT
+on_exit() {
+  adb exec-out screencap -p > screenshot.png || true
+  echo "--- on screen:"; grep -o 'text="[^"]*"' ui.xml 2>/dev/null | sort -u | head -40 || true
+  echo "--- logcat:"; adb logcat -d | grep -iE "Capacitor|daftara|FATAL" | tail -n 60 || true
+}
+trap on_exit EXIT
 
 # يضغط على أول عنصر نصّه (أو وصفه) يطابق $1، كما يراه UiAutomator داخل الـ WebView
 tap() {
@@ -47,8 +52,11 @@ sleep 3
 tap 'زبون جديد'
 sleep 2
 adb shell input text 'Ali'
-adb shell input keyevent 66  # Enter يرسل نموذج الزبون (حفظ)
-sleep 6   # النسخة التلقائية تُكتب بعد ثانيتين من آخر تعديل
+adb shell input keyevent 4   # إخفاء لوحة المفاتيح
+sleep 1
+tap 'حفظ'
+sleep 6   # النسخة التلقائية
+tap 'Ali' >/dev/null || true   # تحديث ui.xml للتشخيص: هل حُفظ الزبون؟ تُكتب بعد ثانيتين من آخر تعديل
 
 adb shell pidof $PKG
 
