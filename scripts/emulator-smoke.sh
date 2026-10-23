@@ -88,6 +88,8 @@ grep -q '"name":"Ali"' backup.json || { echo "::error::backup missing customer";
 echo "auto backup OK: $f"
 
 # 4) إعداد القفل بالبصمة يظهر في الإعدادات (يثبت أن إضافة البصمة تعمل داخل التطبيق)
+tap 'رجوع'      # بعد الحفظ يفتح التطبيق صفحة الزبون
+sleep 2
 tap 'الإعدادات'
 sleep 2
 screen settings
