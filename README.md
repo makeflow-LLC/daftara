@@ -107,7 +107,6 @@ The tunable values live at the top of `app.js`:
 ```js
 var DEFAULT_CURRENCY     = '₪';
 var DEFAULT_COUNTRY_CODE = '970';   // prefixed onto local phone numbers for wa.me links
-var FREE_CUSTOMER_LIMIT  = 25;      // new customers blocked past this, with an explanation
 var BACKUP_REMINDER_DAYS = 7;       // yellow banner on the home screen after this long
 var OVERDUE_DAYS         = 30;      // "متأخر N يوم" once the oldest unpaid debt is this old
 ```
@@ -121,6 +120,12 @@ Backup exports every table into a single JSON file named `daftara-backup-YYYY-MM
 On phones that support sharing files it goes through the Web Share API (so the owner can
 send it to themselves on WhatsApp); everywhere else it falls back to a normal file
 download.
+
+Settings has two ways to load such a file. **استيراد بيانات** merges it into the current
+ledger: a customer with the same name and phone is reused, a transaction with the same type,
+amount and date is skipped, and the shop name and currency are left alone, so importing the
+same file twice changes nothing. **استعادة نسخة كاملة** replaces everything (also offered on
+the first setup screen). An empty ledger offers the import link on the home screen.
 
 Restore validates the file before touching anything — shape, types, `type` being
 `debt`/`payment`, and transactions pointing at a customer that exists (orphans are
@@ -186,7 +191,7 @@ The app was verified in headless Chromium (Playwright) against the acceptance cr
    primary buttons 56px).
 
 Plus the edge cases: overdue sorting and the red "متأخر N يوم" sub-line, the 7-day backup
-banner, the 25-customer limit, deleting a customer cascading to their transactions,
+banner, deleting a customer cascading to their transactions,
 hardware/browser back closing overlays, restoring a file with an orphan transaction, and
 phone numbers written as `0599…`, `599…`, `+972…`, `00970…`.
 
@@ -201,7 +206,7 @@ phone numbers written as `0599…`, `599…`, `+972…`, `00970…`.
 - **Customers with no transactions** show `لا توجد حركات` rather than `سدّد بالكامل` —
   a brand-new customer has a zero balance but has not "paid in full".
 - **Deleting a customer** is available inside the edit sheet (with a confirm sheet). It is
-  the escape hatch for a typo, and for freeing a slot once the free limit is reached.
+  the escape hatch for a typo.
 - **Every modal is a bottom sheet**, confirms included, so the buttons land under the thumb
   of someone holding the phone one-handed instead of in the middle of the screen.
 - **Overpayment** (a negative balance) is shown as `رصيد لصالح الزبون` in green rather than

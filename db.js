@@ -118,6 +118,48 @@
       });
     },
 
+    // يضيف محتوى الملف إلى الدفتر الحالي دون مسح شيء.
+    // الزبون الموجود بنفس الاسم ورقم الهاتف لا يتكرر، والحركة الموجودة بنفس
+    // النوع والمبلغ والتاريخ لا تتكرر — فاستيراد الملف نفسه مرتين لا يضاعف شيئًا.
+    // الإعدادات (اسم المحل والعملة) تبقى كما هي.
+    mergeAll: function (data) {
+      var res = { newCustomers: 0, newTx: 0, skippedTx: 0 };
+      function key(c) { return String(c.name).trim() + '|' + String(c.phone || '').replace(/\D/g, ''); }
+      function txKey(t) { return t.type + '|' + t.amount + '|' + t.date; }
+      return db.transaction('rw', db.customers, db.transactions, function () {
+        return Promise.all([db.customers.toArray(), db.transactions.toArray()]).then(function (cur) {
+          var byKey = Object.create(null);
+          cur[0].forEach(function (c) { byKey[key(c)] = c.id; });
+          var seen = Object.create(null);   // customerId -> {txKey:true}
+          cur[1].forEach(function (t) {
+            (seen[t.customerId] = seen[t.customerId] || Object.create(null))[txKey(t)] = true;
+          });
+
+          var idMap = Object.create(null);  // id في الملف -> id في الدفتر
+          return data.customers.reduce(function (p, c) {
+            return p.then(function () {
+              var k = key(c);
+              if (byKey[k] != null) { idMap[c.id] = byKey[k]; return; }
+              return db.customers.add({
+                name: c.name, phone: c.phone || '', createdAt: c.createdAt || new Date().toISOString()
+              }).then(function (id) { byKey[k] = idMap[c.id] = id; res.newCustomers++; });
+            });
+          }, Promise.resolve()).then(function () {
+            var add = [];
+            data.transactions.forEach(function (t) {
+              var cid = idMap[t.customerId];
+              var s = (seen[cid] = seen[cid] || Object.create(null));
+              if (s[txKey(t)]) { res.skippedTx++; return; }
+              s[txKey(t)] = true;
+              add.push({ customerId: cid, type: t.type, amount: t.amount, note: t.note || '', date: t.date });
+            });
+            res.newTx = add.length;
+            return db.transactions.bulkAdd(add);
+          });
+        });
+      }).then(function () { return res; });
+    },
+
     // يستبدل كل البيانات الحالية بمحتوى الملف (بعد تأكيد المستخدم).
     importAll: function (data) {
       return db.transaction('rw', db.customers, db.transactions, db.settings, function () {

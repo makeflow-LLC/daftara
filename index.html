@@ -190,6 +190,7 @@
     <div id="home-empty" class="empty" hidden>
       <div id="empty-title" class="empty-title"></div>
       <div id="empty-hint" class="empty-hint"></div>
+      <button id="empty-import" class="link-btn empty-import" type="button" hidden><span>عندك بيانات مُصدَّرة سابقًا؟ استوردها</span></button>
     </div>
   </div>
 
@@ -341,7 +342,9 @@
     </dl>
 
     <button id="btn-backup" class="btn btn-primary btn-lg full" type="button"><svg class="ic" viewBox="0 0 256 256" width="21" height="21" fill="currentColor" aria-hidden="true"><path d="M216,48V208H40V48A16,16,0,0,1,56,32H200A16,16,0,0,1,216,48Z" opacity="0.2"/><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"/></svg>احفظ نسخة احتياطية</button>
-    <button id="btn-restore" class="btn btn-outline btn-lg full" type="button">استعادة نسخة</button>
+    <button id="btn-import" class="btn btn-outline btn-lg full" type="button">استيراد بيانات</button>
+    <p class="sheet-hint">يضيف زبائن وحركات ملف مُصدَّر إلى دفترك الحالي دون مسح شيء.</p>
+    <button id="btn-restore" class="btn btn-text" type="button">استعادة نسخة كاملة (تستبدل الدفتر)</button>
     <p id="persist-note" class="sheet-hint"></p>
     <button id="btn-lock" class="btn btn-outline btn-lg full" type="button" hidden></button>
     <p id="lock-note" class="sheet-hint" hidden></p>

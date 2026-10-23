@@ -8,7 +8,6 @@
   /* ---------------- الإعدادات الثابتة ---------------- */
   var DEFAULT_CURRENCY = '₪';
   var DEFAULT_COUNTRY_CODE = '970';
-  var FREE_CUSTOMER_LIMIT = 25;
   var BACKUP_REMINDER_DAYS = 7;
   var OVERDUE_DAYS = 30;
 
@@ -356,7 +355,7 @@
     });
   }
   $('setup-done').addEventListener('click', finishSetup);
-  $('setup-restore').addEventListener('click', function () { $('restore-file').click(); });
+  $('setup-restore').addEventListener('click', function () { fileMode = 'restore'; $('restore-file').click(); });
 
   function requestPersist() {
     if (!navigator.storage || !navigator.storage.persist) return Promise.resolve(false);
@@ -469,6 +468,7 @@
       title = 'الدفتر فارغ';
       hint = 'أضف أول زبون لتبدأ بتسجيل الديون والدفعات.';
     }
+    $('empty-import').hidden = S.customers.length > 0;
     $('empty-title').textContent = title;
     $('empty-hint').textContent = hint;
   }
@@ -673,11 +673,6 @@
   }
 
   function openNewCustomer() {
-    if (S.customers.length >= FREE_CUSTOMER_LIMIT) {
-      alertBox('اكتمل عدد الزبائن',
-        'النسخة المجانية تتسع لـ ' + FREE_CUSTOMER_LIMIT + ' زبون. لإضافة زبون جديد، احذف زبونًا سدّد دينه بالكامل من شاشة الزبون (زر التعديل).');
-      return;
-    }
     openSheet({ mode: 'new', title: 'زبون جديد' });
   }
 
@@ -1028,7 +1023,32 @@
 
   $('btn-backup').addEventListener('click', doBackup);
 
-  $('btn-restore').addEventListener('click', function () { $('restore-file').click(); });
+  // ملف واحد لاختيار الملفات، ونمطان: «import» يضيف إلى الدفتر، «restore» يستبدله
+  var fileMode = 'restore';
+  function pickFile(mode) { fileMode = mode; $('restore-file').click(); }
+  $('btn-restore').addEventListener('click', function () { pickFile('restore'); });
+  $('btn-import').addEventListener('click', function () { pickFile('import'); });
+  $('empty-import').addEventListener('click', function () { pickFile('import'); });
+
+  function importFile(data) {
+    ask({
+      title: 'استيراد البيانات؟',
+      msg: 'سيُضاف من الملف ' + data.customers.length + ' زبون و' + data.transactions.length +
+           ' حركة إلى دفترك الحالي. لن يُمسح شيء، والزبائن والحركات الموجودة أصلًا لن تتكرر.',
+      ok: 'استورد الآن'
+    }).then(function (yes) {
+      if (!yes) return;
+      return DB.mergeAll(data).then(function (r) {
+        return loadData().then(function () {
+          $('search').value = '';
+          resetToHome();
+          return alertBox('تم الاستيراد', 'أُضيف ' + r.newCustomers + ' زبون جديد و' + r.newTx + ' حركة.' +
+            (r.skippedTx ? ' وتُركت ' + r.skippedTx + ' حركة لأنها موجودة أصلًا.' : '') +
+            ' الدفتر الآن يحتوي على ' + S.customers.length + ' زبون.');
+        });
+      });
+    });
+  }
 
   $('restore-file').addEventListener('change', function () {
     var input = $('restore-file');
@@ -1042,6 +1062,11 @@
     reader.onload = function () {
       var res = DB.validateBackup(String(reader.result || ''));
       if (!res.ok) { alertBox('ملف غير صالح', res.error); return; }
+      // في شاشة الإعداد الأولى تبقى استعادة كاملة: تأتي معها اسم المحل والعملة
+      if (fileMode === 'import' && $('screen-setup').hidden) {
+        importFile(res.data);
+        return;
+      }
       ask({
         title: 'استعادة النسخة؟',
         msg: 'سيُمسح كل ما في الدفتر الآن (' + S.customers.length + ' زبون) ويُستبدل بالملف: ' +
