@@ -60,11 +60,12 @@ jobs:
           name: daftara-apk
           path: daftara.apk
 
-  # يشغّل الـ APK على محاكي أندرويد ويتأكد أنه يفتح دون أن ينهار، ويحفظ لقطة شاشة.
+  # يشغّل الـ APK على محاكي أندرويد: إعداد، إضافة زبون، والتأكد من النسخة التلقائية.
   smoke-test:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: daftara-apk
@@ -78,13 +79,7 @@ jobs:
           api-level: 30
           arch: x86_64
           disable-animations: true
-          script: |
-            adb install -r daftara.apk
-            adb shell am start -W -n com.makeflow.daftara/.MainActivity
-            sleep 20
-            adb shell pidof com.makeflow.daftara
-            adb exec-out screencap -p > screenshot.png
-            adb logcat -d | grep -iE "chromium|Capacitor|AndroidRuntime" | tail -n 80 || true
+          script: bash scripts/emulator-smoke.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
