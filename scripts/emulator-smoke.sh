@@ -11,7 +11,7 @@ on_exit() {
 }
 trap on_exit EXIT
 
-# يضغط على أول عنصر نصّه (أو وصفه) يطابق $1، كما يراه UiAutomator داخل الـ WebView
+# يضغط على أول عنصر نصّه (أو وصفه) يساوي $1 تمامًا، كما يراه UiAutomator داخل الـ WebView
 tap() {
   for _ in $(seq 1 15); do
     adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true
@@ -21,7 +21,7 @@ import re, sys
 xml = open('ui.xml', encoding='utf-8', errors='ignore').read()
 for node in re.findall(r'<node [^>]*>', xml):
     t = re.search(r' text="([^"]*)"', node); d = re.search(r'content-desc="([^"]*)"', node)
-    if sys.argv[1] in ((t.group(1) if t else '') + '|' + (d.group(1) if d else '')):
+    if sys.argv[1] in ((t.group(1) if t else ''), (d.group(1) if d else '')):
         b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', node)
         if b:
             x1, y1, x2, y2 = map(int, b.groups())
