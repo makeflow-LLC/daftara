@@ -349,7 +349,9 @@ button.sum-hero{
   border-bottom-color:var(--brand);
 }
 
-#home-scroll{padding-bottom:120px}
+/* الرأس والمجموع والبحث تتمرر مع القائمة؛ زر «زبون جديد» وحده ثابت تحتها،
+   فلا يُدفع خارج الشاشة حين تقصر (لوحة المفاتيح، جوال صغير) */
+#home-scroll{padding-bottom:var(--space-4)}
 
 .row{
   width:100%;
@@ -469,7 +471,7 @@ button.sum-hero{
 }
 .tx-count{font-size:13px;color:var(--color-neutral-600)}
 
-#cust-scroll{padding-bottom:110px}
+#cust-scroll{padding-bottom:var(--space-4)}   /* الرصيد والأزرار تتمرر مع السجل */
 
 .tx-list{display:block}
 .tx{
