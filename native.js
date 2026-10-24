@@ -9,7 +9,8 @@
       لأن WebView لا يدعم navigator.share.
    3. حفظ النسخة في مكان يختاره صاحب المحل (منتقي ملفات أندرويد)، وفتح ملفات
       النسخ (.json) بـ «فتح بواسطة دفترة» — في android/.../DaftaraFilesPlugin.java.
-   4. قفل التطبيق بالبصمة، ورمز قفل الجوال بديلًا حتى لا يُحبس صاحب المحل
+   4. إشعارات محلية: تذكيرات الزبائن والتنبيه اليومي بالمتأخرين.
+   5. قفل التطبيق بالبصمة، ورمز قفل الجوال بديلًا حتى لا يُحبس صاحب المحل
       خارج دفتره إن لم تُقرأ البصمة.
 
    اسم الملف يحمل معرّف الدفتر (ledgerId)، فلو مُسحت البيانات وبدأ دفتر
@@ -30,6 +31,7 @@
   var Bio = cap.Plugins.NativeBiometric;
   var App = cap.Plugins.App;
   var Files = cap.Plugins.DaftaraFiles;
+  var LN = cap.Plugins.LocalNotifications;
   var DIR = 'Daftara';
   var KEEP_DAYS = 30;
   var DEBOUNCE_MS = 2000;
@@ -109,7 +111,7 @@
   }
 
   // كل تعديل على البيانات يجدول نسخة تلقائية
-  ['addCustomer', 'updateCustomer', 'deleteCustomer',
+  ['addCustomer', 'updateCustomer', 'setReminder', 'deleteCustomer',
    'addTransaction', 'updateTransaction', 'deleteTransaction', 'importAll', 'mergeAll'].forEach(function (k) {
     var fn = DB[k];
     DB[k] = function () {
@@ -167,6 +169,39 @@
       return Files.takeOpenedFile().then(function (r) { return r && r.text != null ? r : null; });
     };
     Native.onFileOpened = function (cb) { Files.addListener('fileOpened', cb); };
+  }
+
+  /* ---------- الإشعارات المحلية (بلا إنترنت) ---------- */
+  if (LN) {
+    Native.notifGranted = function () {
+      return LN.checkPermissions().then(function (r) { return r.display === 'granted'; }, function () { return false; });
+    };
+    Native.requestNotif = function () {
+      return LN.requestPermissions().then(function (r) { return r.display === 'granted'; }, function () { return false; });
+    };
+    // يلغي كل ما جُدول سابقًا ويجدول القائمة الجديدة: [{id, title, body, at, extra}]
+    Native.syncNotifications = function (list) {
+      return LN.getPending().then(function (p) {
+        var old = (p && p.notifications) || [];
+        return old.length ? LN.cancel({ notifications: old.map(function (n) { return { id: n.id }; }) }) : null;
+      }).then(function () {
+        if (!list.length) return null;
+        return LN.schedule({ notifications: list.map(function (n) {
+          return {
+            id: n.id, title: n.title, body: n.body, extra: n.extra,
+            schedule: { at: new Date(n.at), allowWhileIdle: true },
+            // لا حاجة لدقة الدقيقة: بدونها لا يُطلب إذن «المنبّهات الدقيقة»
+            isExactNotification: false,
+            smallIcon: 'ic_stat_daftara', iconColor: '#0E7A51'
+          };
+        }) });
+      });
+    };
+    Native.onNotificationTap = function (cb) {
+      LN.addListener('localNotificationActionPerformed', function (a) {
+        cb(a && a.notification && a.notification.extra);
+      });
+    };
   }
 
   // مشاركة ملف (نسخة احتياطية أو كشف PDF): يُكتب في الكاش ثم تُفتح شاشة المشاركة.

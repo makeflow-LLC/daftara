@@ -10,6 +10,7 @@
   var DEFAULT_COUNTRY_CODE = '970';
   var BACKUP_REMINDER_DAYS = 1;
   var BACKUP_EVERY_HOURS = 24;    // يُسأل صاحب المحل أين يحفظ نسخة جديدة كل 24 ساعة
+  var LATE_ALERT_HOUR = 9;        // التنبيه اليومي بالمتأخرين (يغيّره صاحب المحل من الإعدادات)
   var SPLASH_MIN_MS = 1500;       // شاشة الدخول المتحركة لا تُقطع قبل اكتمال حركتها
   var bootAt = Date.now();
   var OVERDUE_DAYS = 30;
@@ -38,6 +39,10 @@
   }
   function fmtSigned(n) { return (n < 0 ? '−' : '') + fmt(Math.abs(n)); }
   function two(n) { return n < 10 ? '0' + n : '' + n; }
+  function fmtTime(iso) {
+    var d = new Date(iso);
+    return isNaN(d.getTime()) ? '' : two(d.getHours()) + ':' + two(d.getMinutes());
+  }
   function fmtDate(iso) {
     var d = new Date(iso);
     if (isNaN(d.getTime())) return '';
@@ -112,14 +117,14 @@
   }
 
   // التأخير يُقاس بعمر أقدم دين لم يُسدَّد، لا بآخر حركة
-  function overdueDays(e) {
+  function overdueDays(e, at) {
     if (e.balance <= 0) return 0;
     var oldest = null;
     e.tx.forEach(function (t) {
       if (t.type === 'debt' && (oldest === null || t.date < oldest)) oldest = t.date;
     });
     if (!oldest) return 0;
-    return Math.max(0, Math.floor((Date.now() - new Date(oldest).getTime()) / 86400000));
+    return Math.max(0, Math.floor(((at || Date.now()) - new Date(oldest).getTime()) / 86400000));
   }
 
   function isOverdue(e) { return overdueDays(e) >= OVERDUE_DAYS; }
@@ -146,6 +151,7 @@
         S.customers = r[0];
         S.tx = r[1];
         reindex();
+        scheduleNotifSync();
       });
   }
 
@@ -157,6 +163,8 @@
       S.persistGranted = !!s.persistGranted;
       S.lockEnabled = !!s.lockEnabled;
       S.backupAskedAt = s.backupAskedAt || null;
+      S.lateAlert = s.lateAlert == null ? LATE_ALERT_HOUR : s.lateAlert;   // ساعة أو 'off'
+      S.notifAsked = !!s.notifAsked;
     });
   }
 
@@ -228,6 +236,8 @@
     $('sheet').hidden = !overlayOpen('sheet');
     $('statement').hidden = !overlayOpen('statement');
     $('settings').hidden = !overlayOpen('settings');
+    $('remind').hidden = !overlayOpen('remind');
+    $('listsheet').hidden = !overlayOpen('listsheet');
   }
 
   /* ---------------- مربعات التأكيد ---------------- */
@@ -384,10 +394,90 @@
     $('total-toggle').setAttribute('aria-label', S.showTotal ? 'أخفِ مجموع الديون' : 'أظهر مجموع الديون');
     $('metric-cur').textContent = S.currency;
     $('metric-count').textContent = fmt(S.customers.length);
+    renderToday();
+    renderDue();
     renderBackupBanner();
     renderSortBar();
     renderCustomerList();
   }
+
+  /* ---- ملخص اليوم ---- */
+  function startOfToday() {
+    var n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), n.getDate()).toISOString();
+  }
+  function todayTx() {
+    var from = startOfToday();
+    return S.tx.filter(function (t) { return t.date >= from; })
+      .sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  }
+  function renderToday() {
+    var list = todayTx(), debt = 0, pay = 0;
+    list.forEach(function (t) { if (t.type === 'debt') debt += t.amount; else pay += t.amount; });
+    // المبالغ تتبع زر العين مثل المجموع
+    $('today-debt').textContent = S.showTotal ? fmt(debt) : '••';
+    $('today-pay').textContent = S.showTotal ? fmt(pay) : '••';
+    $('today-count').textContent = list.length ? list.length + ' حركة' : 'لا حركات بعد';
+  }
+  $('today-strip').addEventListener('click', function () {
+    var list = todayTx(), debt = 0, pay = 0;
+    list.forEach(function (t) { if (t.type === 'debt') debt += t.amount; else pay += t.amount; });
+    openList('ملخص اليوم', 'ديون ' + fmt(debt) + ' · دفعات ' + fmt(pay) + ' ' + S.currency +
+      ' · ' + list.length + ' حركة', list.map(function (t) {
+        var e = entry(t.customerId);
+        return {
+          id: t.customerId,
+          name: e ? e.c.name : '—',
+          sub: fmtTime(t.date) + (t.note ? ' · ' + t.note : ''),
+          amount: (t.type === 'debt' ? '+' : '−') + fmt(t.amount),
+          cls: t.type
+        };
+      }), 'لم تُسجَّل أي حركة اليوم بعد.');
+  });
+
+  /* ---- التذكيرات المستحقة ---- */
+  function isDue(c) { return !!c.remindAt && new Date(c.remindAt).getTime() <= Date.now(); }
+  function dueCustomers() {
+    var out = [];
+    S.index.forEach(function (e) { if (isDue(e.c)) out.push(e); });
+    return out.sort(function (a, b) { return a.c.remindAt < b.c.remindAt ? -1 : 1; });
+  }
+  function renderDue() {
+    var due = dueCustomers();
+    $('due-strip').hidden = !due.length;
+    if (!due.length) return;
+    $('due-text').textContent = due.length === 1
+      ? 'تذكير: ' + (due[0].c.remindText || due[0].c.name)
+      : due.length + ' تذكيرات مستحقة الآن';
+  }
+  $('due-strip').addEventListener('click', function () {
+    var due = dueCustomers();
+    if (due.length === 1) { pushView('customer', due[0].c.id); return; }
+    openList('تذكيرات مستحقة', '', due.map(function (e) {
+      return { id: e.c.id, name: e.c.name, sub: e.c.remindText || '', amount: e.balance > 0 ? fmt(e.balance) : '', cls: 'debt' };
+    }), '');
+  });
+
+  /* ---- قائمة عامة في شيت: صفوف تفتح صفحة الزبون ---- */
+  function openList(title, sub, rows, empty) {
+    $('list-title').textContent = title;
+    $('list-sub').textContent = sub || '';
+    $('list-rows').innerHTML = rows.length ? rows.map(function (r) {
+      return '<li><button class="lrow" type="button" data-id="' + r.id + '">' +
+        '<span class="lrow-main"><span class="lrow-name">' + esc(r.name) + '</span>' +
+        '<span class="lrow-sub">' + esc(r.sub) + '</span></span>' +
+        '<span class="lrow-amt num ' + (r.cls || '') + '">' + esc(r.amount) + '</span></button></li>';
+    }).join('') : '<li class="lrow-empty">' + esc(empty) + '</li>';
+    pushOverlay('listsheet');
+  }
+  $('list-rows').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.lrow');
+    if (!b) return;
+    var id = Number(b.dataset.id);
+    goBackThen(function () { if (entry(id)) pushView('customer', id); });
+  });
+  $('list-close').addEventListener('click', goBack);
+  $('listsheet').querySelector('.sheet-backdrop').addEventListener('click', goBack);
 
   $('total-toggle').addEventListener('click', function () {
     S.showTotal = !S.showTotal;
@@ -442,12 +532,14 @@
   function renderCustomerList() {
     var raw = $('search').value;
     var q = norm(raw);
-    var digits = q.replace(/\D/g, '');
+    // 0599… يطابق +970599…: نبحث بالأرقام دون الأصفار في أولها
+    var digits = q.replace(/\D/g, '').replace(/^0+/, '');
     $('search-clear').hidden = !raw;
 
     var list = sortedCustomers().filter(function (e) {
       if (!q) return true;
       if (norm(e.c.name).indexOf(q) !== -1) return true;
+      if (e.c.note && norm(e.c.note).indexOf(q) !== -1) return true;
       return digits !== '' &&
         String(e.c.phone || '').replace(/\D/g, '').indexOf(digits) !== -1;
     });
@@ -466,6 +558,7 @@
         '<span class="row-main">' +
           '<span class="row-name">' + esc(e.c.name) + '</span>' +
           '<span class="row-sub"><span>' + esc(lastLabel(e)) + '</span>' +
+            (e.c.remindAt ? '<span class="row-bell' + (isDue(e.c) ? ' is-due' : '') + '">🔔</span>' : '') +
             (od >= OVERDUE_DAYS ? '<span class="late">متأخر ' + od + ' يوم</span>' : '') +
           '</span>' +
         '</span>' + amount +
@@ -554,6 +647,10 @@
     $('balance-value').textContent = fmt(Math.abs(e.balance));
     document.querySelector('.bal-cur').textContent = S.currency;
 
+    $('cust-note').hidden = !c.note;
+    $('cust-note-text').textContent = c.note || '';
+    renderRemindBox(e);
+
     $('tx-count').textContent = e.tx.length ? String(e.tx.length) : '';
     $('tx-list').innerHTML = e.tx.map(function (t) {
       var label = (t.type === 'debt' ? 'دين' : 'دفعة') + (t.note ? ' · ' + t.note : '');
@@ -574,6 +671,79 @@
   }
 
   $('cust-back').addEventListener('click', goBack);
+  $('cust-note').addEventListener('click', function () { openEditCustomer(currentView().id, { focusNote: true }); });
+
+  /* ---- تذكير عن الزبون: لصاحب المحل، في موعد يختاره ---- */
+  function renderRemindBox(e) {
+    var c = e.c, has = !!c.remindAt, due = has && isDue(c);
+    var box = $('remind-box');
+    box.className = 'remind' + (has ? ' set' : '') + (due ? ' due' : '');
+    // سطران: الموعد، ثم نص التذكير — حتى لا يختلط التاريخ بالنص العربي
+    $('remind-text').innerHTML = has
+      ? '<span class="remind-when">' + (due ? 'مستحق الآن · ' : 'تذكير · ') +
+          '<span class="num">' + esc(fmtDate(c.remindAt)) + ' ' + esc(fmtTime(c.remindAt)) + '</span></span>' +
+        '<span class="remind-msg">' + esc(c.remindText || 'تذكير بالمطالبة') + '</span>'
+      : 'أضف تذكيرًا بالمطالبة';
+    $('remind-wa').hidden = !(has && normalizePhone(c.phone) && e.balance > 0);
+    $('remind-done').hidden = !has;
+  }
+
+  var remindId = null;
+  function localInput(d) {   // ← قيمة حقل datetime-local بالتوقيت المحلي
+    return d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate()) +
+      'T' + two(d.getHours()) + ':' + two(d.getMinutes());
+  }
+  function daysFromNow(n) {
+    var d = new Date();
+    d.setDate(d.getDate() + n);
+    d.setHours(9, 0, 0, 0);
+    return d;
+  }
+  function openRemind(id) {
+    var e = entry(id);
+    if (!e) return;
+    remindId = id;
+    $('remind-title').textContent = 'تذكير عن ' + e.c.name;
+    $('remind-at').value = localInput(e.c.remindAt ? new Date(e.c.remindAt) : daysFromNow(1));
+    $('remind-msg').value = e.c.remindText ||
+      ('طالب ' + e.c.name + ' بالسداد' + (e.balance > 0 ? ' (' + fmt(e.balance) + ' ' + S.currency + ')' : ''));
+    $('remind-clear').hidden = !e.c.remindAt;
+    $('remind-hint').textContent = Native.isNative
+      ? 'يصلك إشعار على الجوال في الموعد، ويظهر في أعلى الشاشة الرئيسية.'
+      : 'يظهر التذكير في أعلى الشاشة الرئيسية حين تفتح التطبيق في موعده أو بعده.';
+    pushOverlay('remind');
+  }
+  $('remind-open').addEventListener('click', function () { openRemind(currentView().id); });
+  $('remind-quick').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.chip');
+    if (b) $('remind-at').value = localInput(daysFromNow(Number(b.dataset.days)));
+  });
+  $('remind-form').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var d = new Date($('remind-at').value);
+    if (isNaN(d.getTime())) { $('remind-at').focus(); return; }
+    var id = remindId;
+    DB.setReminder(id, d.toISOString(), $('remind-msg').value.trim())
+      .then(loadData)
+      .then(function () { return ensureNotifPermission(); })
+      .then(function () { goBack(); });
+  });
+  $('remind-clear').addEventListener('click', function () {
+    DB.setReminder(remindId, '', '').then(loadData).then(function () { goBack(); });
+  });
+  $('remind-cancel').addEventListener('click', goBack);
+  $('remind').querySelector('.sheet-backdrop').addEventListener('click', goBack);
+  $('remind-done').addEventListener('click', function () {
+    DB.setReminder(currentView().id, '', '').then(loadData).then(render);
+  });
+  // رسالة تذكير مهذبة للزبون نفسه عبر واتساب
+  $('remind-wa').addEventListener('click', function () {
+    var e = entry(currentView().id);
+    if (!e) return;
+    openWhatsApp(normalizePhone(e.c.phone),
+      'مرحبًا ' + e.c.name + '،\nتذكير لطيف من ' + S.shopName + ': رصيدك المستحق ' +
+      fmt(e.balance) + ' ' + S.currency + '.\nشكرًا لتعاملك معنا.');
+  });
   $('btn-debt').addEventListener('click', function () { openNumpad('debt'); });
   $('btn-pay').addEventListener('click', function () { openNumpad('payment'); });
   $('cust-edit').addEventListener('click', function () { openEditCustomer(currentView().id); });
@@ -703,6 +873,7 @@
     sheetAfter = opts.after || null;
     $('sheet-title').textContent = opts.title;
     $('sheet-name').value = opts.name || '';
+    $('sheet-note').value = opts.note || '';
     var sp = splitPhone(opts.phone);
     $('sheet-cc').value = codeInfo(sp.cc) ? sp.cc : DEFAULT_COUNTRY_CODE;
     $('sheet-phone').value = sp.local;
@@ -713,7 +884,7 @@
     if (opts.msg) $('sheet-msg').textContent = opts.msg;
     pushOverlay('sheet');
     setTimeout(function () {
-      (opts.focusPhone ? $('sheet-phone') : $('sheet-name')).focus();
+      (opts.focusPhone ? $('sheet-phone') : opts.focusNote ? $('sheet-note') : $('sheet-name')).focus();
     }, 120);
   }
 
@@ -731,6 +902,8 @@
       title: 'تعديل بيانات الزبون',
       name: e.c.name,
       phone: e.c.phone,
+      note: e.c.note,
+      focusNote: !!opts.focusNote,
       msg: opts.msg,
       focusPhone: !!opts.focusPhone,
       after: opts.after
@@ -752,11 +925,12 @@
       return;
     }
     var phone = pr.phone;
+    var note = $('sheet-note').value.trim();
     var after = sheetAfter;
     var id = sheetId;
     var p;
     if (sheetMode === 'new') {
-      p = DB.addCustomer(name, phone).then(function (newId) {
+      p = DB.addCustomer(name, phone, note).then(function (newId) {
         return loadData().then(function () {
           // ورقة الإضافة تتحوّل إلى بطاقة الزبون ليسجّل أول دين فورًا
           replaceTop({ t: 'view', n: 'customer', id: newId });
@@ -764,7 +938,7 @@
         });
       });
     } else {
-      p = DB.updateCustomer(id, name, phone).then(loadData).then(function () {
+      p = DB.updateCustomer(id, name, phone, note).then(loadData).then(function () {
         goBackThen(function () { if (after) after(id); });
       });
     }
@@ -973,12 +1147,16 @@
       });
       return;
     }
-    var url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(buildStatement(e));
+    openWhatsApp(phone, buildStatement(e));
+    goBack();
+  });
+
+  function openWhatsApp(phone, text) {
+    var url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(text);
     // داخل التطبيق يفتح Capacitor الرابط في واتساب مباشرة
     var w = Native.isNative ? null : window.open(url, '_blank', 'noopener');
     if (!w) window.location.href = url;
-    goBack();
-  });
+  }
 
   // زر «كشف الحساب» في صفحة الزبون: المعاينة دائمًا (PDF لا يحتاج رقمًا، وواتساب يطلبه هناك)
   function sendStatement(id) { openStatement(id); }
@@ -1037,6 +1215,10 @@
       $('btn-persist').hidden = S.persistGranted;
     }
     renderLockSetting();
+    $('set-theme').value = currentTheme();
+    $('late-alert-box').hidden = !Native.isNative;
+    $('set-late-alert').value = String(S.lateAlert);
+    renderNotifNote();
     pushOverlay('settings');
   }
 
@@ -1133,6 +1315,110 @@
       return DB.setSetting('lockEnabled', S.lockEnabled).then(renderLockSetting);
     });
   });
+
+  /* ---------------- المظهر: تلقائي / فاتح / ليلي ---------------- */
+  // يُحفظ في localStorage لأن index.html يقرؤه قبل أول رسم (بلا وميض أبيض ليلًا)
+  function currentTheme() {
+    try { return localStorage.getItem('daftara-theme') || 'auto'; } catch (e) { return 'auto'; }
+  }
+  function applyTheme(t) {
+    try { localStorage.setItem('daftara-theme', t); } catch (e) {}
+    if (t === 'auto') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = t;
+    var dark = t === 'dark' || (t === 'auto' && window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#131816' : '#f3f2f2');
+  }
+  applyTheme(currentTheme());
+  $('set-theme').addEventListener('change', function () { applyTheme($('set-theme').value); });
+
+  /* ---------------- الإشعارات: التذكيرات والتنبيه اليومي بالمتأخرين ----------------
+     كل شيء يُحسب على الجوال ويُجدول مسبقًا (بلا إنترنت): تذكير كل زبون في موعده،
+     وتنبيه يومي للأيام السبعة القادمة بأسماء من سيكون متأخرًا في ذلك اليوم.
+     يُعاد الجدول بعد كل تعديل وكلما فُتح التطبيق. */
+  var notifTimer = null;
+  function scheduleNotifSync() {
+    if (!Native.syncNotifications) return;
+    clearTimeout(notifTimer);
+    notifTimer = setTimeout(syncNotifications, 1200);
+  }
+
+  function lateTitle(n) {
+    return n === 1 ? 'زبون متأخر عن السداد' : n === 2 ? 'زبونان متأخران عن السداد' : n + ' زبائن متأخرون عن السداد';
+  }
+
+  function notificationPlan() {
+    var out = [], now = Date.now();
+    S.index.forEach(function (e) {
+      if (!e.c.remindAt) return;
+      var t = new Date(e.c.remindAt).getTime();
+      if (t > now) out.push({ id: 100000 + e.c.id, title: '🔔 ' + e.c.name, body: e.c.remindText || 'تذكير بالمطالبة', at: t, extra: { customerId: e.c.id } });
+    });
+    if (S.lateAlert !== 'off' && S.shopName) {
+      for (var d = 0; d < 7; d++) {
+        var at = new Date();
+        at.setDate(at.getDate() + d);
+        at.setHours(Number(S.lateAlert), 0, 0, 0);
+        if (at.getTime() <= now + 60000) continue;
+        var late = [];
+        S.index.forEach(function (e) { if (overdueDays(e, at.getTime()) >= OVERDUE_DAYS) late.push(e.c.name); });
+        if (!late.length) continue;
+        out.push({
+          id: 900000 + d, title: 'دفترة — ' + lateTitle(late.length),
+          body: late.slice(0, 4).join('، ') + (late.length > 4 ? ' و' + (late.length - 4) + ' غيرهم' : ''),
+          at: at.getTime(), extra: { open: 'late' }
+        });
+      }
+    }
+    return out;
+  }
+
+  function syncNotifications() {
+    return Native.notifGranted().then(function (ok) {
+      if (!ok) return;
+      return Native.syncNotifications(notificationPlan());
+    }).catch(function () {});
+  }
+
+  // يطلب الإذن مرة (أول تذكير، أو أول تشغيل فيه متأخرون)، ثم يجدول
+  function ensureNotifPermission() {
+    if (!Native.requestNotif) return Promise.resolve(false);
+    return Native.notifGranted().then(function (ok) {
+      if (ok) return true;
+      S.notifAsked = true;
+      return DB.setSetting('notifAsked', true).then(Native.requestNotif);
+    }).then(function (ok) { syncNotifications(); renderNotifNote(); return ok; })
+      .catch(function () { return false; });
+  }
+
+  function renderNotifNote() {
+    if (!Native.notifGranted) return;
+    Native.notifGranted().then(function (ok) {
+      $('notif-note').hidden = ok;
+      $('notif-note').textContent = 'الإشعارات مغلقة لدفترة. فعّلها من إعدادات الجوال ← التطبيقات ← دفترة ← الإشعارات.';
+    });
+  }
+
+  $('set-late-alert').addEventListener('change', function () {
+    var v = $('set-late-alert').value;
+    S.lateAlert = v === 'off' ? 'off' : Number(v);
+    DB.setSetting('lateAlert', S.lateAlert).then(function () {
+      return S.lateAlert === 'off' ? syncNotifications() : ensureNotifPermission();
+    });
+  });
+
+  // الضغط على إشعار: تذكير ← صفحة الزبون، تنبيه المتأخرين ← قائمة المتأخرين
+  var pendingTap = null;
+  function handleNotifTap(extra) {
+    if (!extra) return;
+    if (!S.started) { pendingTap = extra; return; }
+    pendingTap = null;
+    $('search').value = '';
+    resetToHome();
+    if (extra.customerId && entry(extra.customerId)) pushView('customer', extra.customerId);
+    else if (extra.open === 'late') { S.sort = 'late'; render(); }
+  }
+  if (Native.onNotificationTap) Native.onNotificationTap(handleNotifTap);
 
   /* ---------------- النسخ الاحتياطي والاستعادة ---------------- */
   function downloadBlob(blob, filename) {
@@ -1357,7 +1643,14 @@
   function onForeground() {
     fg = fg.then(function () { return locking; })
       .then(handleOpenedFile)
+      .then(function () { if (pendingTap) handleNotifTap(pendingTap); })
       .then(maybeAskBackup)
+      .then(function () {
+        if (Native.requestNotif && !S.notifAsked && S.lateAlert !== 'off' && notificationPlan().length) {
+          return ensureNotifPermission();
+        }
+        scheduleNotifSync();
+      })
       .catch(function () {});
     return fg;
   }

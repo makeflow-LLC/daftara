@@ -57,6 +57,8 @@
     <!-- لا إنترنت: التطبيق لا يستطيع إرسال أي بيانات إلى أي جهة. واتساب يفتح كتطبيق مستقل.
          tools:node="remove" يمنع أي إضافة مستقبلية من إعادة هذا الإذن خِفية. -->
     <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <!-- التذكيرات لا تحتاج دقة الدقيقة، فلا نطلب «المنبّهات الدقيقة» (تفتح شاشة إعدادات للمستخدم) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
     <!-- النسخة التلقائية في Documents/Daftara: أندرويد 10 وأقدم يحتاجان إذن الكتابة،
          ومن أندرويد 11 يكتب التطبيق ملفاته هناك بلا إذن. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />

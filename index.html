@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>دفترة</title>
 <meta name="theme-color" content="#f3f2f2">
+<script>
+  // المظهر (فاتح/ليلي) قبل أول رسم حتى لا تومض الشاشة بيضاء في الوضع الليلي
+  try { var t = localStorage.getItem('daftara-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
 <meta name="description" content="دفتر ديون بسيط لأصحاب المحلات — يعمل بدون إنترنت.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
@@ -179,6 +183,15 @@
       </div>
     </section>
 
+    <button id="today-strip" class="today" type="button">
+      <span class="today-title">اليوم</span>
+      <span class="today-chip debt"><span class="today-k">ديون</span> <span id="today-debt" class="num">0</span></span>
+      <span class="today-chip pay"><span class="today-k">دفعات</span> <span id="today-pay" class="num">0</span></span>
+      <span id="today-count" class="today-count"></span>
+    </button>
+
+    <button id="due-strip" class="due" type="button" hidden><svg class="ic" viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M208,192H48a8,8,0,0,1-6.88-12C47.71,168.6,56,139.81,56,104a72,72,0,0,1,144,0c0,35.82,8.3,64.6,14.9,76A8,8,0,0,1,208,192Z" opacity="0.2"/><path d="M221.8,175.94C216.25,166.38,208,139.33,208,104a80,80,0,1,0-160,0c0,35.34-8.26,62.38-13.81,71.94A16,16,0,0,0,48,200H88.81a40,40,0,0,0,78.38,0H208a16,16,0,0,0,13.8-24.06ZM128,216a24,24,0,0,1-22.62-16h45.24A24,24,0,0,1,128,216ZM48,184c7.7-13.24,16-43.92,16-80a64,64,0,1,1,128,0c0,36.05,8.28,66.73,16,80Z"/></svg><span id="due-text"></span></button>
+
     <div id="backup-banner" class="backup-line" hidden>
       <span class="dot" aria-hidden="true"></span>
       <span id="backup-banner-text">لم تحفظ نسخة احتياطية بعد.</span>
@@ -187,7 +200,7 @@
 
     <div class="search-row">
       <svg class="ic" viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M192,112a80,80,0,1,1-80-80A80,80,0,0,1,192,112Z" opacity="0.2"/><path d="M229.66,218.34,179.6,168.28a88.21,88.21,0,1,0-11.32,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></svg>
-      <input id="search" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" placeholder="ابحث باسم الزبون">
+      <input id="search" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" placeholder="ابحث بالاسم أو رقم الهاتف أو الملاحظة">
       <button id="search-clear" class="icon-btn search-clear" type="button" aria-label="مسح البحث" hidden>
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.3 19.71 2.88 18.3 9.17 12 2.88 5.71 4.3 4.29l6.29 6.3 6.3-6.3z"/></svg>
       </button>
@@ -237,9 +250,17 @@
       </div>
     </section>
 
+    <button id="cust-note" class="cust-note" type="button" hidden><svg class="ic" viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M216,160l-56,56V160Z" opacity="0.2"/><path d="M88,96a8,8,0,0,1,8-8h64a8,8,0,0,1,0,16H96A8,8,0,0,1,88,96Zm8,40h64a8,8,0,0,0,0-16H96a8,8,0,0,0,0,16Zm32,16H96a8,8,0,0,0,0,16h32a8,8,0,0,0,0-16ZM224,48V156.69A15.86,15.86,0,0,1,219.31,168L168,219.31A15.86,15.86,0,0,1,156.69,224H48a16,16,0,0,1-16-16V48A16,16,0,0,1,48,32H208A16,16,0,0,1,224,48ZM48,208H152V160a8,8,0,0,1,8-8h48V48H48Zm120-40v28.7L196.69,168Z"/></svg><span id="cust-note-text"></span></button>
+
     <div class="actions">
       <button id="btn-debt" class="btn btn-debt btn-action" type="button"><svg class="ic" viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm48-88a8,8,0,0,1-8,8H136v32a8,8,0,0,1-16,0V136H88a8,8,0,0,1,0-16h32V88a8,8,0,0,1,16,0v32h32A8,8,0,0,1,176,128Z"/></svg>دين</button>
       <button id="btn-pay" class="btn btn-pay btn-action" type="button"><svg class="ic" viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M16,152H48v56H16a8,8,0,0,1-8-8V160A8,8,0,0,1,16,152ZM204,56a28,28,0,0,0-12,2.71h0A28,28,0,1,0,176,85.29h0A28,28,0,1,0,204,56Z" opacity="0.2"/><path d="M230.33,141.06a24.43,24.43,0,0,0-21.24-4.23l-41.84,9.62A28,28,0,0,0,140,112H89.94a31.82,31.82,0,0,0-22.63,9.37L44.69,144H16A16,16,0,0,0,0,160v40a16,16,0,0,0,16,16H120a7.93,7.93,0,0,0,1.94-.24l64-16a6.94,6.94,0,0,0,1.19-.4L226,182.82l.44-.2a24.6,24.6,0,0,0,3.93-41.56ZM16,160H40v40H16Zm203.43,8.21-38,16.18L119,200H56V155.31l22.63-22.62A15.86,15.86,0,0,1,89.94,128H140a12,12,0,0,1,0,24H112a8,8,0,0,0,0,16h32a8.32,8.32,0,0,0,1.79-.2l67-15.41.31-.08a8.6,8.6,0,0,1,6.3,15.9ZM164,96a36,36,0,0,0,5.9-.48,36,36,0,1,0,28.22-47A36,36,0,1,0,164,96Zm60-12a20,20,0,1,1-20-20A20,20,0,0,1,224,84ZM164,40a20,20,0,0,1,19.25,14.61,36,36,0,0,0-15,24.93A20.42,20.42,0,0,1,164,80a20,20,0,0,1,0-40Z"/></svg>دفعة</button>
+    </div>
+
+    <div id="remind-box" class="remind">
+      <button id="remind-open" class="remind-main" type="button"><svg class="ic" viewBox="0 0 256 256" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M208,192H48a8,8,0,0,1-6.88-12C47.71,168.6,56,139.81,56,104a72,72,0,0,1,144,0c0,35.82,8.3,64.6,14.9,76A8,8,0,0,1,208,192Z" opacity="0.2"/><path d="M221.8,175.94C216.25,166.38,208,139.33,208,104a80,80,0,1,0-160,0c0,35.34-8.26,62.38-13.81,71.94A16,16,0,0,0,48,200H88.81a40,40,0,0,0,78.38,0H208a16,16,0,0,0,13.8-24.06ZM128,216a24,24,0,0,1-22.62-16h45.24A24,24,0,0,1,128,216ZM48,184c7.7-13.24,16-43.92,16-80a64,64,0,1,1,128,0c0,36.05,8.28,66.73,16,80Z"/></svg><span id="remind-text">أضف تذكيرًا بالمطالبة</span></button>
+      <button id="remind-wa" class="link-btn" type="button" hidden><span>ذكّر الزبون عبر واتساب</span></button>
+      <button id="remind-done" class="link-btn" type="button" hidden><span>تم</span></button>
     </div>
 
     <div class="tx-head">
@@ -304,6 +325,11 @@
       <p id="sheet-phone-hint" class="field-hint"></p>
     </div>
 
+    <label class="field">
+      <span class="field-label">ملاحظة (اختياري) — تظهر في صفحة الزبون</span>
+      <textarea id="sheet-note" rows="2" maxlength="300" placeholder="مثال: يسدد أول كل شهر، جار المحل"></textarea>
+    </label>
+
     <p id="sheet-err" class="form-err" hidden>اكتب اسم الزبون</p>
 
     <button id="sheet-save" class="btn btn-primary btn-lg full" type="submit">حفظ</button>
@@ -365,6 +391,30 @@
     <p class="sheet-hint">يضيف زبائن وحركات ملف مُصدَّر إلى دفترك الحالي دون مسح شيء.</p>
     <button id="btn-restore" class="btn btn-text" type="button">استعادة نسخة كاملة (تستبدل الدفتر)</button>
     <p id="persist-note" class="sheet-hint"></p>
+
+    <label class="field">
+      <span class="field-label">المظهر</span>
+      <select id="set-theme">
+        <option value="auto">تلقائي (حسب الجوال)</option>
+        <option value="light">فاتح</option>
+        <option value="dark">ليلي</option>
+      </select>
+    </label>
+
+    <div id="late-alert-box" hidden>
+      <label class="field">
+        <span class="field-label">تنبيه يومي بالزبائن المتأخرين (أكثر من 30 يومًا)</span>
+        <select id="set-late-alert">
+          <option value="off">لا تنبّهني</option>
+          <option value="8">كل يوم الساعة 8 صباحًا</option>
+          <option value="9">كل يوم الساعة 9 صباحًا</option>
+          <option value="12">كل يوم الساعة 12 ظهرًا</option>
+          <option value="17">كل يوم الساعة 5 مساءً</option>
+          <option value="20">كل يوم الساعة 8 مساءً</option>
+        </select>
+      </label>
+      <p id="notif-note" class="sheet-hint" hidden></p>
+    </div>
     <button id="btn-lock" class="btn btn-outline btn-lg full" type="button" hidden></button>
     <p id="lock-note" class="sheet-hint" hidden></p>
     <button id="btn-persist" class="btn btn-text" type="button" hidden>فعّل حماية التخزين</button>
@@ -376,6 +426,45 @@
 </div>
 
 <!-- ============ شيت التأكيد ============ -->
+<!-- ============ تذكير عن زبون (لصاحب المحل) ============ -->
+<div id="remind" class="overlay sheet-wrap" hidden>
+  <div class="sheet-backdrop" data-close="1"></div>
+  <form id="remind-form" class="sheet">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="sheet-head"><h2 id="remind-title" class="sheet-title">تذكير</h2></div>
+    <div class="quick-when" id="remind-quick">
+      <button type="button" class="chip" data-days="1">غدًا</button>
+      <button type="button" class="chip" data-days="3">بعد 3 أيام</button>
+      <button type="button" class="chip" data-days="7">بعد أسبوع</button>
+      <button type="button" class="chip" data-days="30">بعد شهر</button>
+    </div>
+    <label class="field">
+      <span class="field-label">الموعد</span>
+      <input id="remind-at" type="datetime-local">
+    </label>
+    <label class="field">
+      <span class="field-label">نص التذكير</span>
+      <input id="remind-msg" type="text" maxlength="120" autocomplete="off">
+    </label>
+    <p id="remind-hint" class="sheet-hint"></p>
+    <button id="remind-save" class="btn btn-primary btn-lg full" type="submit">احفظ التذكير</button>
+    <button id="remind-clear" class="btn btn-text-danger" type="button" hidden>احذف التذكير</button>
+    <button id="remind-cancel" class="btn btn-text" type="button">إلغاء</button>
+  </form>
+</div>
+
+<!-- ============ قائمة عامة: ملخص اليوم، التذكيرات المستحقة ============ -->
+<div id="listsheet" class="overlay sheet-wrap" hidden>
+  <div class="sheet-backdrop" data-close="1"></div>
+  <div class="sheet">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="sheet-head"><h2 id="list-title" class="sheet-title"></h2></div>
+    <div id="list-sub" class="list-sub"></div>
+    <ul id="list-rows" class="list-rows"></ul>
+    <button id="list-close" class="btn btn-text" type="button">إغلاق</button>
+  </div>
+</div>
+
 <div id="dialog" class="overlay sheet-wrap" hidden>
   <div class="sheet-backdrop" data-close="1"></div>
   <div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title">

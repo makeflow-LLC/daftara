@@ -157,6 +157,15 @@ share sheet (WhatsApp…). The app is also registered for `.json` files, so «ف
 from a file manager or WhatsApp offers to merge the file or replace the ledger. Both live in
 `android/app/src/main/java/com/makeflow/daftara/DaftaraFilesPlugin.java`.
 
+Home shows a «اليوم» strip (today's debts, payments and count; tap for the list) and a
+purple strip when a customer reminder is due. Each customer can carry a note (shown on their
+page and searchable) and one reminder for the owner — a date/time and a text such as «طالب
+أبو خالد بالسداد». On Android, reminders and a daily «زبائن متأخرون» alert (default 9:00, set
+in Settings) are local notifications scheduled on the phone for the next 7 days and
+rescheduled after every change; they are inexact (no exact-alarm permission). Search matches
+name, note, or phone digits without the leading 0 (0599… finds +970599…). Settings has a
+light/dark/auto theme, applied before first paint from localStorage.
+
 Deleting a customer or replacing the whole ledger from a backup asks for the fingerprint (or
 the phone PIN) after the confirm sheet; in the browser, or on a phone with no fingerprint or
 PIN, the confirm sheet alone is enough.

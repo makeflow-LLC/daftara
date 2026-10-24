@@ -62,15 +62,20 @@
     /* ---------- الزبائن ---------- */
     allCustomers: function () { return db.customers.toArray(); },
 
-    addCustomer: function (name, phone) {
+    // حقول اختيارية للزبون: note (ملاحظة)، remindAt (ISO) و remindText (تذكير لصاحب المحل)
+    addCustomer: function (name, phone, note) {
       return db.customers.add({
         name: name,
         phone: phone || '',
+        note: note || '',
         createdAt: new Date().toISOString()
       });
     },
-    updateCustomer: function (id, name, phone) {
-      return db.customers.update(id, { name: name, phone: phone || '' });
+    updateCustomer: function (id, name, phone, note) {
+      return db.customers.update(id, { name: name, phone: phone || '', note: note || '' });
+    },
+    setReminder: function (id, at, text) {
+      return db.customers.update(id, { remindAt: at || '', remindText: text || '' });
     },
     deleteCustomer: function (id) {
       return db.transaction('rw', db.customers, db.transactions, function () {
@@ -138,7 +143,9 @@
               var k = key(c);
               if (byKey[k] != null) { idMap[c.id] = byKey[k]; return; }
               return db.customers.add({
-                name: c.name, phone: c.phone || '', createdAt: c.createdAt || new Date().toISOString()
+                name: c.name, phone: c.phone || '', note: c.note || '',
+                remindAt: c.remindAt || '', remindText: c.remindText || '',
+                createdAt: c.createdAt || new Date().toISOString()
               }).then(function (id) { byKey[k] = idMap[c.id] = id; res.newCustomers++; });
             });
           }, Promise.resolve()).then(function () {
@@ -219,6 +226,9 @@
         id: x.id,
         name: String(x.name),
         phone: typeof x.phone === 'string' ? x.phone : '',
+        note: typeof x.note === 'string' ? x.note : '',
+        remindAt: typeof x.remindAt === 'string' ? x.remindAt : '',
+        remindText: typeof x.remindText === 'string' ? x.remindText : '',
         createdAt: typeof x.createdAt === 'string' ? x.createdAt : new Date().toISOString()
       };
     });

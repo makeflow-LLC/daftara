@@ -71,6 +71,7 @@ sleep 3
 
 # 2) الشاشة الرئيسية: زبون جديد
 screen home
+grep -q 'لا حركات بعد' ui.xml || { echo "::error::daily summary strip missing"; exit 1; }
 tap 'زبون جديد'
 sleep 2
 screen sheet

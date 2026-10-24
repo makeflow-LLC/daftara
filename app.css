@@ -222,7 +222,7 @@ ul{margin:0;padding:0;list-style:none}
 .action-bar{
   flex:none;
   padding:var(--space-3) var(--space-4) calc(var(--sab) + var(--space-4));
-  background:linear-gradient(to top,var(--color-bg) 62%,rgba(243,242,242,0));
+  background:linear-gradient(to top,var(--color-bg) 62%,transparent);
 }
 
 /* ---------------- 5. الرئيسية ---------------- */
@@ -716,6 +716,8 @@ button.sum-hero{
   --grad-debt:linear-gradient(135deg,#e2367f 0%,#aa0b56 100%);
   --grad-pay:linear-gradient(135deg,#1f9d6c 0%,#0b6644 100%);
   --amber-100:#fff6e5;--amber-500:#f0a020;--amber-800:#7a4b00;
+  --color-card:#ffffff;            /* حقول وبطاقات فوق الورق */
+  --note-bg:#fff8e1;--note-fg:#6b4e00;
   --radius-md:12px;
   --radius-lg:20px;
 }
@@ -773,10 +775,10 @@ button.sum-hero{
 .made-by b{font-family:system-ui,sans-serif;letter-spacing:.06em;color:var(--brand-700)}
 
 /* ---- الأزرار ---- */
-.btn-primary{background:var(--grad-brand);box-shadow:0 6px 16px rgba(14,122,81,.28)}
+.btn-primary{background:var(--grad-brand);color:#fff;box-shadow:0 6px 16px rgba(14,122,81,.28)}
 .btn-primary:active{filter:brightness(.92)}
-.btn-debt,.btn-danger{background:var(--grad-debt);box-shadow:0 6px 16px rgba(170,11,86,.24)}
-.btn-pay-solid{background:var(--grad-pay)}
+.btn-debt,.btn-danger{background:var(--grad-debt);color:#fff;box-shadow:0 6px 16px rgba(170,11,86,.24)}
+.btn-pay-solid{background:var(--grad-pay);color:#fff}
 .btn-pay{background:var(--brand-100);border-color:transparent}
 .btn-debt:active,.btn-danger:active,.btn-pay-solid:active{filter:brightness(.92)}
 
@@ -810,7 +812,7 @@ button.sum-hero{
 .backup-line .dot{background:var(--amber-500)}
 .search-row{
   margin:0 var(--space-4) var(--space-3);padding:0 var(--space-3);
-  border:1px solid var(--color-divider);border-radius:14px;background:#fff;
+  border:1px solid var(--color-divider);border-radius:14px;background:var(--color-card);
 }
 .search-row:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-100)}
 .sortbar{gap:var(--space-2)}
@@ -848,7 +850,12 @@ button.sum-hero{
 
 /* ---- الشيتات والحقول ---- */
 .sheet{border-radius:24px 24px 0 0}
-.field input,.field select{background:#fff;border-radius:var(--radius-md)}
+.field input,.field select,.field textarea{background:var(--color-card);border-radius:var(--radius-md)}
+.field textarea{
+  width:100%;padding:12px 14px;resize:vertical;min-height:64px;
+  border:1px solid var(--color-divider);font:inherit;font-size:16px;color:var(--color-text);line-height:1.5;
+}
+.field textarea:focus{outline:0;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-100)}
 .field input:focus,.field select:focus{box-shadow:0 0 0 3px var(--brand-100)}
 .amount-display{border-radius:var(--radius-lg)}
 .quick-btn{border-radius:999px}
@@ -861,3 +868,141 @@ button.sum-hero{
 .field-hint{margin:6px 0 0;font-size:13px;min-height:1em}
 .field-hint.ok{color:var(--brand-700)}
 .field-hint.bad{color:var(--color-accent-2-700)}
+
+/* ---- ملخص اليوم والتذكيرات المستحقة ---- */
+.today{
+  display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;
+  width:calc(100% - 2 * var(--space-4));margin:0 var(--space-4) var(--space-3);
+  padding:var(--space-2) var(--space-3);
+  border:1px solid var(--color-divider);border-radius:var(--radius-md);
+  background:var(--color-card);font:inherit;color:inherit;text-align:start;
+}
+.today:active{background:var(--color-hover)}
+.today-title{font-weight:700;font-size:15px;margin-left:auto}
+.today-chip{padding:2px 10px;border-radius:999px;font-size:14px;font-weight:600}
+.today-chip.debt{background:var(--color-accent-2-100);color:var(--color-accent-2-700)}
+.today-chip.pay{background:var(--brand-100);color:var(--brand-700)}
+.today-k{font-weight:400;opacity:.85}
+.today-count{font-size:13px;color:var(--color-neutral-700)}
+.due{
+  display:flex;align-items:center;gap:var(--space-2);
+  width:calc(100% - 2 * var(--space-4));margin:0 var(--space-4) var(--space-3);
+  padding:var(--space-2) var(--space-3);border:0;border-radius:var(--radius-md);
+  background:linear-gradient(135deg,#7b3fe4,#5b2bb5);color:#fff;
+  font:inherit;font-weight:600;text-align:start;
+  box-shadow:0 6px 16px rgba(91,43,181,.28);
+  animation:pulse 1.6s ease-in-out 2;
+}
+@keyframes pulse{50%{transform:scale(1.02)}}
+.row-bell{flex:none;font-size:12px;opacity:.7}
+.row-bell.is-due{opacity:1}
+
+/* ---- صفحة الزبون: الملاحظة والتذكير ---- */
+.cust-note{
+  display:flex;align-items:flex-start;gap:var(--space-2);
+  width:calc(100% - 2 * var(--space-4));margin:0 var(--space-4) var(--space-3);
+  padding:var(--space-2) var(--space-3);border:0;border-radius:var(--radius-md);
+  background:var(--note-bg);color:var(--note-fg);
+  font:inherit;font-size:15px;line-height:1.6;text-align:start;white-space:pre-wrap;
+}
+.cust-note .ic{margin-top:3px}
+.remind{
+  display:flex;align-items:center;flex-wrap:wrap;gap:0 var(--space-2);
+  margin:0 var(--space-4) var(--space-4);
+  padding:var(--space-1) var(--space-2);border-radius:var(--radius-md);
+  border:1px dashed var(--color-divider);
+}
+.remind-main{
+  flex:1;min-width:0;display:flex;align-items:center;gap:var(--space-2);
+  min-height:var(--tap);background:transparent;border:0;padding:0 var(--space-1);
+  font:inherit;font-size:15px;color:var(--color-neutral-700);text-align:start;
+}
+.remind.set{border-style:solid;border-color:#c9b6f2;background:#f5f0ff}
+.remind.set .remind-main{flex-basis:100%}
+#remind-text{display:block;min-width:0}
+.remind-when{display:block;font-size:13px;font-weight:400;opacity:.85}
+.remind-msg{display:block}
+.remind.set .remind-main{color:#4b2593;font-weight:600}
+.remind.due{border-color:#7b3fe4;background:#efe6ff}
+
+/* ---- شيت التذكير ---- */
+.quick-when{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-3)}
+.chip{
+  min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--color-divider);
+  background:var(--color-card);font:inherit;font-size:14px;color:var(--color-text);
+}
+.chip:active{background:var(--brand-100);border-color:var(--brand)}
+
+/* ---- قائمة الشيت (ملخص اليوم، التذكيرات) ---- */
+.list-sub{font-size:14px;color:var(--color-neutral-700);margin:-6px 0 var(--space-2)}
+.list-rows{max-height:52vh;overflow-y:auto}
+.lrow{
+  width:100%;display:flex;align-items:center;gap:var(--space-3);
+  padding:var(--space-2) 0;background:transparent;border:0;border-top:1px solid var(--color-hairline);
+  font:inherit;color:inherit;text-align:start;
+}
+.lrow-main{flex:1;min-width:0}
+.lrow-name{display:block;font-weight:600}
+.lrow-sub{display:block;font-size:13px;color:var(--color-neutral-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lrow-amt{flex:none;font-weight:700}
+.lrow-amt.debt{color:var(--color-accent-2-700)}
+.lrow-amt.payment{color:var(--brand-700)}
+.lrow-empty{padding:var(--space-4) 0;color:var(--color-neutral-700)}
+
+/* ================================================================
+   12. الوضع الليلي — تلقائي حسب الجوال، أو يُفرض من الإعدادات
+   (data-theme على <html>). الألوان المتدرجة تبقى كما هي.
+================================================================ */
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --color-bg:#131816;--color-surface:#1a201d;--color-card:#1d2421;--color-text:#ebe8e6;
+  --color-divider:rgba(255,255,255,.14);--color-hairline:rgba(255,255,255,.07);
+  --color-hover:rgba(255,255,255,.05);--color-press:rgba(255,255,255,.10);
+  --color-neutral-100:#1d2421;--color-neutral-200:#262e2a;--color-neutral-300:#35403b;
+  --color-neutral-400:#4b5752;--color-neutral-500:#6c7772;--color-neutral-600:#8f9994;
+  --color-neutral-700:#b0b9b5;--color-neutral-800:#cfd5d2;--color-neutral-900:#e6eae8;
+  --brand-100:#143a2c;--brand-200:#1d5240;--brand-300:#2c7a5c;--brand-700:#7fe0b3;--brand-800:#a9edcb;
+  --color-accent-2-100:#3b1527;--color-accent-2-200:#5a1e3a;--color-accent-2-700:#ff86b4;--color-accent-2-800:#ffb3cf;
+  --amber-100:#3a2c0d;--amber-800:#ffd27a;
+  --note-bg:#3a300f;--note-fg:#ffe08a;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);--shadow-md:0 3px 10px rgba(0,0,0,.45);--shadow-lg:0 12px 32px rgba(0,0,0,.6);
+}
+:root[data-theme="dark"] .sheet-backdrop{background:rgba(0,0,0,.6)}
+:root[data-theme="dark"] .av-0{background:#143a2c;color:#7fe0b3}
+:root[data-theme="dark"] .av-1{background:#14304f;color:#8cc2ff}
+:root[data-theme="dark"] .av-2{background:#3d2a10;color:#ffc27a}
+:root[data-theme="dark"] .av-3{background:#2c1f47;color:#c7a6ff}
+:root[data-theme="dark"] .av-4{background:#3b1527;color:#ff86b4}
+:root[data-theme="dark"] .av-5{background:#103538;color:#7fdbe3}
+:root[data-theme="dark"] .remind.set{background:#2a1f45;border-color:#5b44a0}
+:root[data-theme="dark"] .remind.set .remind-main{color:#d4c2ff}
+:root[data-theme="dark"] .remind.due{background:#34225c;border-color:#8e63ff}
+:root[data-theme="dark"] .kicker{background:#143a2c}
+
+@media (prefers-color-scheme:dark){
+:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --color-bg:#131816;--color-surface:#1a201d;--color-card:#1d2421;--color-text:#ebe8e6;
+  --color-divider:rgba(255,255,255,.14);--color-hairline:rgba(255,255,255,.07);
+  --color-hover:rgba(255,255,255,.05);--color-press:rgba(255,255,255,.10);
+  --color-neutral-100:#1d2421;--color-neutral-200:#262e2a;--color-neutral-300:#35403b;
+  --color-neutral-400:#4b5752;--color-neutral-500:#6c7772;--color-neutral-600:#8f9994;
+  --color-neutral-700:#b0b9b5;--color-neutral-800:#cfd5d2;--color-neutral-900:#e6eae8;
+  --brand-100:#143a2c;--brand-200:#1d5240;--brand-300:#2c7a5c;--brand-700:#7fe0b3;--brand-800:#a9edcb;
+  --color-accent-2-100:#3b1527;--color-accent-2-200:#5a1e3a;--color-accent-2-700:#ff86b4;--color-accent-2-800:#ffb3cf;
+  --amber-100:#3a2c0d;--amber-800:#ffd27a;
+  --note-bg:#3a300f;--note-fg:#ffe08a;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);--shadow-md:0 3px 10px rgba(0,0,0,.45);--shadow-lg:0 12px 32px rgba(0,0,0,.6);
+}
+:root:not([data-theme="light"]) .sheet-backdrop{background:rgba(0,0,0,.6)}
+:root:not([data-theme="light"]) .av-0{background:#143a2c;color:#7fe0b3}
+:root:not([data-theme="light"]) .av-1{background:#14304f;color:#8cc2ff}
+:root:not([data-theme="light"]) .av-2{background:#3d2a10;color:#ffc27a}
+:root:not([data-theme="light"]) .av-3{background:#2c1f47;color:#c7a6ff}
+:root:not([data-theme="light"]) .av-4{background:#3b1527;color:#ff86b4}
+:root:not([data-theme="light"]) .av-5{background:#103538;color:#7fdbe3}
+:root:not([data-theme="light"]) .remind.set{background:#2a1f45;border-color:#5b44a0}
+:root:not([data-theme="light"]) .remind.set .remind-main{color:#d4c2ff}
+:root:not([data-theme="light"]) .remind.due{background:#34225c;border-color:#8e63ff}
+:root:not([data-theme="light"]) .kicker{background:#143a2c}
+}
