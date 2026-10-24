@@ -7,7 +7,9 @@
       بيانات التطبيق أو حُذف التطبيق نفسه، وتُستعاد بزر «استعادة نسخة».
    2. مشاركة ملف النسخة (واتساب وغيره) عبر شاشة المشاركة في أندرويد،
       لأن WebView لا يدعم navigator.share.
-   3. قفل التطبيق بالبصمة، ورمز قفل الجوال بديلًا حتى لا يُحبس صاحب المحل
+   3. حفظ النسخة في مكان يختاره صاحب المحل (منتقي ملفات أندرويد)، وفتح ملفات
+      النسخ (.json) بـ «فتح بواسطة دفترة» — في android/.../DaftaraFilesPlugin.java.
+   4. قفل التطبيق بالبصمة، ورمز قفل الجوال بديلًا حتى لا يُحبس صاحب المحل
       خارج دفتره إن لم تُقرأ البصمة.
 
    اسم الملف يحمل معرّف الدفتر (ledgerId)، فلو مُسحت البيانات وبدأ دفتر
@@ -27,6 +29,7 @@
   var Share = cap.Plugins.Share;
   var Bio = cap.Plugins.NativeBiometric;
   var App = cap.Plugins.App;
+  var Files = cap.Plugins.DaftaraFiles;
   var DIR = 'Daftara';
   var KEEP_DAYS = 30;
   var DEBOUNCE_MS = 2000;
@@ -107,7 +110,7 @@
 
   // كل تعديل على البيانات يجدول نسخة تلقائية
   ['addCustomer', 'updateCustomer', 'deleteCustomer',
-   'addTransaction', 'deleteTransaction', 'importAll'].forEach(function (k) {
+   'addTransaction', 'updateTransaction', 'deleteTransaction', 'importAll', 'mergeAll'].forEach(function (k) {
     var fn = DB[k];
     DB[k] = function () {
       return fn.apply(DB, arguments).then(function (v) { schedule(); return v; });
@@ -148,6 +151,18 @@
       hiddenAt = 0;
     });
   };
+
+  /* ---------- الحفظ والفتح ---------- */
+  // يعيد true إن حُفظ الملف، وfalse إن أغلق صاحب المحل المنتقي دون حفظ
+  Native.saveAs = function (filename, json) {
+    return Files.saveAs({ filename: filename, data: json }).then(function (r) { return !!r.saved; });
+  };
+
+  // ملف فُتح بـ «فتح بواسطة دفترة»: {name, text} أو null
+  Native.takeOpenedFile = function () {
+    return Files.takeOpenedFile().then(function (r) { return r && r.text != null ? r : null; });
+  };
+  Native.onFileOpened = function (cb) { Files.addListener('fileOpened', cb); };
 
   // مشاركة ملف النسخة: يُكتب في الكاش ثم تُفتح شاشة المشاركة.
   // يعيد true عند المشاركة، وnull إن ألغاها المستخدم.

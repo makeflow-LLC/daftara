@@ -98,6 +98,10 @@
         date: new Date().toISOString()
       });
     },
+    // تعديل المبلغ والملاحظة؛ التاريخ يبقى تاريخ الحركة الأصلي
+    updateTransaction: function (id, amount, note) {
+      return db.transactions.update(id, { amount: amount, note: note || '' });
+    },
     deleteTransaction: function (id) { return db.transactions.delete(id); },
 
     /* ---------- النسخ الاحتياطي ---------- */

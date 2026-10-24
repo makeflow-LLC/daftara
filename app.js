@@ -8,7 +8,8 @@
   /* ---------------- الإعدادات الثابتة ---------------- */
   var DEFAULT_CURRENCY = '₪';
   var DEFAULT_COUNTRY_CODE = '970';
-  var BACKUP_REMINDER_DAYS = 7;
+  var BACKUP_REMINDER_DAYS = 1;
+  var BACKUP_EVERY_HOURS = 24;    // يُسأل صاحب المحل أين يحفظ نسخة جديدة كل 24 ساعة
   var OVERDUE_DAYS = 30;
 
   var CURRENCIES = [
@@ -153,6 +154,7 @@
       S.lastBackupAt = s.lastBackupAt || null;
       S.persistGranted = !!s.persistGranted;
       S.lockEnabled = !!s.lockEnabled;
+      S.backupAskedAt = s.backupAskedAt || null;
     });
   }
 
@@ -238,6 +240,9 @@
       var ok = $('dialog-ok');
       ok.textContent = opts.ok || 'تأكيد';
       ok.className = 'btn btn-lg full ' + (opts.danger ? 'btn-danger' : 'btn-primary');
+      var alt = $('dialog-alt');
+      alt.hidden = !opts.alt;
+      alt.textContent = opts.alt || '';
       var cancel = $('dialog-cancel');
       cancel.hidden = !!opts.alert;
       cancel.textContent = opts.cancel || 'إلغاء';
@@ -255,6 +260,7 @@
   }
 
   $('dialog-ok').addEventListener('click', function () { closeDialog(true); goBack(); });
+  $('dialog-alt').addEventListener('click', function () { closeDialog('alt'); goBack(); });
   $('dialog-cancel').addEventListener('click', function () { closeDialog(false); goBack(); });
   $('dialog').querySelector('.sheet-backdrop').addEventListener('click', function () {
     closeDialog(false); goBack();
@@ -368,13 +374,21 @@
   /* ---------------- 4. الشاشة الرئيسية ---------------- */
   function renderHome() {
     $('home-shop').textContent = S.shopName || 'دفترة';
-    $('metric-total').textContent = fmt(totalOwed());
+    // المجموع مخفي حتى يضغط صاحب المحل على العين، ويُخفى ثانية عند العودة للتطبيق
+    $('metric-total').textContent = S.showTotal ? fmt(totalOwed()) : '••••';
+    $('total-toggle').setAttribute('aria-pressed', S.showTotal ? 'true' : 'false');
+    $('total-toggle').setAttribute('aria-label', S.showTotal ? 'أخفِ مجموع الديون' : 'أظهر مجموع الديون');
     $('metric-cur').textContent = S.currency;
     $('metric-count').textContent = fmt(S.customers.length);
     renderBackupBanner();
     renderSortBar();
     renderCustomerList();
   }
+
+  $('total-toggle').addEventListener('click', function () {
+    S.showTotal = !S.showTotal;
+    renderHome();
+  });
 
   function renderSortBar() {
     var late = 0;
@@ -507,6 +521,8 @@
   /* ---------------- 2. صفحة الزبون ---------------- */
   var ICON_TRASH = '<svg class="ic" viewBox="0 0 256 256" width="19" height="19" fill="currentColor" aria-hidden="true"><path d="M200,56V208a8,8,0,0,1-8,8H64a8,8,0,0,1-8-8V56Z" opacity="0.2"/><path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/></svg>';
 
+  var ICON_EDIT = '<svg class="ic" viewBox="0 0 256 256" width="19" height="19" fill="currentColor" aria-hidden="true"><path d="M221.66,90.34,192,120,136,64l29.66-29.66a8,8,0,0,1,11.31,0L221.66,79A8,8,0,0,1,221.66,90.34Z" opacity="0.2"/><path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z"/></svg>';
+
   function renderCustomer(id) {
     var e = entry(id);
     if (!e) { goBack(); return; }
@@ -537,6 +553,8 @@
           '<span class="tx-when">' + esc(fmtDateTime(t.date)) + '</span>' +
         '</span>' +
         '<span class="tx-amount num">' + sign + fmt(t.amount) + '</span>' +
+        '<button class="icon-btn tx-edit" type="button" data-id="' + t.id +
+          '" aria-label="تعديل الحركة">' + ICON_EDIT + '</button>' +
         '<button class="icon-btn tx-del" type="button" data-id="' + t.id +
           '" aria-label="حذف الحركة">' + ICON_TRASH + '</button>' +
       '</li>';
@@ -552,7 +570,9 @@
 
   $('tx-list').addEventListener('click', function (ev) {
     var b = ev.target.closest('.tx-del');
-    if (b) confirmDeleteTx(Number(b.dataset.id));
+    if (b) { confirmDeleteTx(Number(b.dataset.id)); return; }
+    b = ev.target.closest('.tx-edit');
+    if (b) openEditTx(Number(b.dataset.id));
   });
 
   function flashBalance() {
@@ -560,6 +580,12 @@
     b.classList.remove('pop');
     void b.offsetWidth;
     b.classList.add('pop');
+  }
+
+  function openEditTx(id) {
+    for (var i = 0; i < S.tx.length; i++) {
+      if (S.tx[i].id === id) { openNumpad(S.tx[i].type, S.tx[i]); return; }
+    }
   }
 
   function confirmDeleteTx(id) {
@@ -583,19 +609,21 @@
   /* ---------------- 3. تسجيل دين أو دفعة (شيت) ----------------
      مبالغ صحيحة فقط: لا فاصلة عشرية، ومفتاح 00 بدلًا منها. */
   var MAX_DIGITS = 7;
-  var np = { type: 'debt', customerId: null, buf: '' };
+  var np = { type: 'debt', customerId: null, buf: '', editId: null };
 
-  function openNumpad(type) {
+  // tx: حركة موجودة للتعديل (اختياري) — يُفتح الشيت بمبلغها وملاحظتها
+  function openNumpad(type, tx) {
     var v = currentView();
     if (v.n !== 'customer') return;
     np.type = type;
     np.customerId = v.id;
-    np.buf = '';
+    np.editId = tx ? tx.id : null;
+    np.buf = tx ? String(Math.round(tx.amount)) : '';
     var e = entry(v.id);
-    $('numpad-title').textContent = type === 'debt' ? 'تسجيل دين' : 'تسجيل دفعة';
+    $('numpad-title').textContent = (tx ? 'تعديل ' : 'تسجيل ') + (type === 'debt' ? 'دين' : 'دفعة');
     $('numpad-for').textContent = e ? e.c.name : '';
     $('numpad-cur').textContent = S.currency;
-    $('numpad-notefield').value = '';
+    $('numpad-notefield').value = tx ? (tx.note || '') : '';
     $('amount-display').className = 'amount-display ' + type;
     paintNumpad();
     pushOverlay('numpad');
@@ -608,7 +636,8 @@
     $('numpad-value').textContent = fmt(amount);
     var btn = $('numpad-confirm');
     btn.className = 'btn btn-lg full ' + (np.type === 'debt' ? 'btn-debt' : 'btn-pay-solid');
-    btn.textContent = np.type === 'debt' ? 'أضف الدين' : 'أضف الدفعة';
+    btn.textContent = np.editId != null ? 'احفظ التعديل'
+      : (np.type === 'debt' ? 'أضف الدين' : 'أضف الدفعة');
     btn.disabled = amount <= 0;
   }
 
@@ -642,7 +671,9 @@
     var note = $('numpad-notefield').value.trim();
     var cid = np.customerId;
     $('numpad-confirm').disabled = true;
-    DB.addTransaction(cid, np.type, amount, note)
+    (np.editId != null
+      ? DB.updateTransaction(np.editId, amount, note)
+      : DB.addTransaction(cid, np.type, amount, note))
       .then(loadData)
       .then(function () {
         goBackThen(function () { flashBalance(); });
@@ -862,7 +893,7 @@
     $('set-shop').value = S.shopName;
     fillCurrencySelect($('set-currency'), S.currency);
     $('info-count').textContent = fmt(S.customers.length);
-    $('info-total').textContent = fmt(totalOwed()) + ' ' + S.currency;
+    $('info-total').textContent = S.showTotal ? fmt(totalOwed()) + ' ' + S.currency : '••••';
     $('info-backup').textContent = S.lastBackupAt
       ? fmtDate(S.lastBackupAt) + ' (قبل ' + daysSince(S.lastBackupAt) + ' يوم)'
       : 'لم تحفظ نسخة بعد';
@@ -938,6 +969,9 @@
   if (Native.onResume) {
     Native.onResume(function (awayMs) {
       if (S.lockEnabled && awayMs > LOCK_AFTER_MS) unlock();
+      S.showTotal = false;
+      if (S.started) render();
+      onForeground();
     });
   }
 
@@ -981,7 +1015,11 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
   }
 
-  function doBackup() {
+  // يسأل صاحب المحل أين يحفظ النسخة: مكان يختاره على الجوال، أو يرسلها (واتساب...)
+  // opts: {title, msg, later} — later يجعل زر الإلغاء «لاحقًا»
+  function doBackup(opts) {
+    opts = opts || {};
+    S.backupBusy = true;
     return DB.exportAll().then(function (data) {
       var json = JSON.stringify(data, null, 2);
       var filename = 'daftara-backup-' + ymd() + '.json';
@@ -989,23 +1027,43 @@
       var file = null;
       try { file = new File([blob], filename, { type: 'application/json' }); } catch (e) { file = null; }
 
-      var shareable = file && navigator.share && navigator.canShare &&
-        navigator.canShare({ files: [file] });
+      var shareable = Native.isNative || !!(file && navigator.share && navigator.canShare &&
+        navigator.canShare({ files: [file] }));
 
-      var step = Native.isNative
-        ? Native.shareBackup(filename, json).catch(function () {
+      function save() {
+        if (!Native.isNative) { downloadBlob(blob, filename); return Promise.resolve(true); }
+        return Native.saveAs(filename, json).then(function (saved) { return saved || null; }, function () {
+          alertBox('تعذّر الحفظ', 'لم نستطع الحفظ في هذا المكان. جرّب مكانًا آخر أو أرسل النسخة.');
+          return null;
+        });
+      }
+      function send() {
+        if (Native.isNative) {
+          return Native.shareBackup(filename, json).catch(function () {
             alertBox('تعذّرت المشاركة', 'لم نستطع فتح شاشة المشاركة. النسخة التلقائية في ذاكرة الجوال ما زالت محفوظة.');
             return null;
-          })
-        : shareable
-        ? navigator.share({ files: [file], title: 'نسخة احتياطية — دفترة' })
-            .then(function () { return true; })
-            .catch(function (err) {
-              if (err && err.name === 'AbortError') return null;   // ألغى المستخدم
-              downloadBlob(blob, filename);
-              return true;
-            })
-        : Promise.resolve().then(function () { downloadBlob(blob, filename); return true; });
+          });
+        }
+        return navigator.share({ files: [file], title: 'نسخة احتياطية — دفترة' })
+          .then(function () { return true; })
+          .catch(function (err) {
+            if (err && err.name === 'AbortError') return null;   // ألغى المستخدم
+            downloadBlob(blob, filename);
+            return true;
+          });
+      }
+
+      var step = ask({
+        title: opts.title || 'نسخة احتياطية',
+        msg: opts.msg || 'أين تريد أن تحتفظ بالنسخة؟',
+        ok: Native.isNative ? 'احفظها في مكان تختاره' : 'نزّلها على الجهاز',
+        alt: shareable ? 'أرسلها (واتساب وغيره)' : '',
+        cancel: opts.later ? 'لاحقًا' : 'إلغاء'
+      }).then(function (choice) {
+        if (choice === true) return save();
+        if (choice === 'alt') return send();
+        return null;
+      });
 
       return step.then(function (done) {
         if (!done) return;
@@ -1018,10 +1076,29 @@
           render();
         });
       });
-    });
+    }).then(function () { S.backupBusy = false; }, function () { S.backupBusy = false; });
   }
 
-  $('btn-backup').addEventListener('click', doBackup);
+  $('btn-backup').addEventListener('click', function () { doBackup(); });
+
+  // كل 24 ساعة: إن مرّ يوم على آخر نسخة (وعلى آخر سؤال) نسأل أين يحفظ نسخة جديدة
+  function hoursSince(iso) { return iso ? (Date.now() - new Date(iso).getTime()) / 3600000 : Infinity; }
+
+  function maybeAskBackup() {
+    if (!S.started || !S.customers.length || dialogResolve || nav.length > 1 || S.backupBusy) return;
+    if (hoursSince(S.lastBackupAt) < BACKUP_EVERY_HOURS) return;
+    if (hoursSince(S.backupAskedAt) < BACKUP_EVERY_HOURS) return;
+    S.backupAskedAt = new Date().toISOString();
+    return DB.setSetting('backupAskedAt', S.backupAskedAt).then(function () {
+      return doBackup({
+        title: 'حان وقت النسخة الاحتياطية',
+        msg: S.lastBackupAt
+          ? 'مرّ يوم على آخر نسخة احتياطية. أين تريد أن تحتفظ بنسخة اليوم؟'
+          : 'لم تحفظ نسخة احتياطية بعد. أين تريد أن تحتفظ بها؟',
+        later: true
+      });
+    });
+  }
 
   // ملف واحد لاختيار الملفات، ونمطان: «import» يضيف إلى الدفتر، «restore» يستبدله
   var fileMode = 'restore';
@@ -1031,13 +1108,18 @@
   $('empty-import').addEventListener('click', function () { pickFile('import'); });
 
   function importFile(data) {
-    ask({
+    return ask({
       title: 'استيراد البيانات؟',
       msg: 'سيُضاف من الملف ' + data.customers.length + ' زبون و' + data.transactions.length +
            ' حركة إلى دفترك الحالي. لن يُمسح شيء، والزبائن والحركات الموجودة أصلًا لن تتكرر.',
       ok: 'استورد الآن'
     }).then(function (yes) {
       if (!yes) return;
+      return mergeFile(data);
+    });
+  }
+
+  function mergeFile(data) {
       return DB.mergeAll(data).then(function (r) {
         return loadData().then(function () {
           $('search').value = '';
@@ -1047,7 +1129,6 @@
             ' الدفتر الآن يحتوي على ' + S.customers.length + ' زبون.');
         });
       });
-    });
   }
 
   $('restore-file').addEventListener('change', function () {
@@ -1059,23 +1140,40 @@
     reader.onerror = function () {
       alertBox('تعذّرت القراءة', 'لم نستطع قراءة الملف. جرّب ملفًا آخر.');
     };
-    reader.onload = function () {
-      var res = DB.validateBackup(String(reader.result || ''));
-      if (!res.ok) { alertBox('ملف غير صالح', res.error); return; }
-      // في شاشة الإعداد الأولى تبقى استعادة كاملة: تأتي معها اسم المحل والعملة
-      if (fileMode === 'import' && $('screen-setup').hidden) {
-        importFile(res.data);
-        return;
-      }
-      ask({
+    reader.onload = function () { loadBackupText(String(reader.result || ''), fileMode); };
+    reader.readAsText(f);
+  });
+
+  // mode: «import» يضيف، «restore» يستبدل، «choose» يسأل (ملف فُتح بـ «فتح بواسطة دفترة»)
+  function loadBackupText(text, mode) {
+    var res = DB.validateBackup(text);
+    if (!res.ok) return alertBox('ملف غير صالح', res.error);
+    // في شاشة الإعداد الأولى تبقى استعادة كاملة: تأتي معها اسم المحل والعملة
+    if (!$('screen-setup').hidden) mode = 'restore';
+    if (mode === 'import') return importFile(res.data);
+    if (mode === 'restore') return restoreFile(res.data);
+    return ask({
+      title: 'فتح نسخة احتياطية',
+      msg: 'في الملف ' + res.data.customers.length + ' زبون و' + res.data.transactions.length +
+           ' حركة. «أضف إلى دفتري» لا يمسح شيئًا ولا يكرر الموجود.',
+      ok: 'أضف إلى دفتري',
+      alt: 'استبدل الدفتر كله'
+    }).then(function (c) {
+      if (c === true) return mergeFile(res.data);
+      if (c === 'alt') return restoreFile(res.data);
+    });
+  }
+
+  function restoreFile(data) {
+      return ask({
         title: 'استعادة النسخة؟',
         msg: 'سيُمسح كل ما في الدفتر الآن (' + S.customers.length + ' زبون) ويُستبدل بالملف: ' +
-             res.data.customers.length + ' زبون و' + res.data.transactions.length + ' حركة. لا يمكن التراجع.',
+             data.customers.length + ' زبون و' + data.transactions.length + ' حركة. لا يمكن التراجع.',
         ok: 'استعد الآن',
         danger: true
       }).then(function (yes) {
         if (!yes) return;
-        return DB.importAll(res.data)
+        return DB.importAll(data)
           .then(loadSettings)
           .then(loadData)
           .then(function () {
@@ -1090,8 +1188,31 @@
             return alertBox('تمت الاستعادة', 'الدفتر الآن يحتوي على ' + S.customers.length + ' زبون.');
           });
       });
-    };
-    reader.readAsText(f);
+  }
+
+  // ملف .json فُتح من خارج التطبيق (مدير الملفات، واتساب)
+  function handleOpenedFile() {
+    if (!Native.takeOpenedFile) return Promise.resolve();
+    return Native.takeOpenedFile().then(function (f) {
+      if (f) return loadBackupText(f.text, 'choose');
+    }, function () {
+      return alertBox('تعذّرت القراءة', 'لم نستطع قراءة الملف. جرّب فتحه من التطبيق: الإعدادات ← استيراد بيانات.');
+    });
+  }
+
+  // كلما صار التطبيق أمام صاحب المحل: بعد القفل إن وُجد، ثم الملف المفتوح، ثم سؤال النسخة
+  var fg = Promise.resolve();
+  function onForeground() {
+    fg = fg.then(function () { return locking; })
+      .then(handleOpenedFile)
+      .then(maybeAskBackup)
+      .catch(function () {});
+    return fg;
+  }
+  if (Native.onFileOpened) Native.onFileOpened(onForeground);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { S.showTotal = false; return; }
+    if (!Native.isNative) { if (S.started) render(); onForeground(); }
   });
 
   /* ---------------- الإقلاع ---------------- */
@@ -1124,6 +1245,7 @@
       else startApp();
       registerSW();
       if (Native.start) Native.start();
+      setTimeout(onForeground, 600);
     })
     .catch(function (err) {
       fatal((err && err.message) ? err.message : 'خطأ غير معروف');

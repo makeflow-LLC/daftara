@@ -150,6 +150,12 @@ after every change to `Documents/Daftara/daftara-YYYY-MM-DD-<ledgerId>.json` (ke
 Those files survive clearing the app's data and uninstalling it; restore them with
 «استعادة نسخة», which is also offered on the first setup screen.
 
+Every 24 hours (and from «احفظ نسخة احتياطية») the app asks where to keep a backup: a place
+the owner picks with Android's file picker (Downloads, Drive, SD card…), or sent through the
+share sheet (WhatsApp…). The app is also registered for `.json` files, so «فتح بواسطة دفترة»
+from a file manager or WhatsApp offers to merge the file or replace the ledger. Both live in
+`android/app/src/main/java/com/makeflow/daftara/DaftaraFilesPlugin.java`.
+
 Settings also offers a fingerprint lock (Android only). The prompt accepts the phone's own
 PIN/pattern as a fallback, the app relocks after a minute in the background, and it never
 locks when the phone has no fingerprint or PIN any more, so the owner cannot be shut out.

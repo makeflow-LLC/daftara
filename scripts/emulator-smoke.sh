@@ -95,3 +95,17 @@ sleep 2
 screen settings
 grep -q 'القفل بالبصمة' ui.xml || { echo "::error::fingerprint lock setting missing"; exit 1; }
 echo "fingerprint lock setting OK"
+
+# 5) «فتح بواسطة دفترة»: نفتح ملف النسخة التلقائية كما يفتحه مدير الملفات
+id=$(adb shell content query --uri content://media/external/file --projection _id --where "\"_display_name='$f'\"" | tr -d '\r' | sed -n 's/.*_id=\([0-9]*\).*/\1/p' | head -n1)
+echo "media id for $f: $id"
+[ -n "$id" ] || { echo "::error::backup file not in MediaStore"; exit 1; }
+adb shell am start -a android.intent.action.VIEW -t application/json -d "content://media/external/file/$id" -n $PKG/.MainActivity
+sleep 4
+screen opened
+grep -q 'فتح نسخة احتياطية' ui.xml || { echo "::error::open-with dialog missing"; exit 1; }
+tap 'أضف إلى دفتري'
+sleep 3
+screen merged
+grep -q 'أُضيف 0 زبون جديد' ui.xml || { echo "::error::import from opened file failed"; exit 1; }
+echo "open-with import OK"

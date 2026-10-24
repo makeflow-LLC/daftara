@@ -268,6 +268,14 @@ ul{margin:0;padding:0;list-style:none}
   font-family:var(--font-num);
   color:var(--color-accent-2-700);
 }
+button.sum-hero{
+  width:100%;background:transparent;border:0;padding:0;
+  font:inherit;font-family:var(--font-num);cursor:pointer;text-align:inherit;
+}
+.sum-eye{align-self:center;order:-1;color:var(--color-neutral-600)}
+.sum-hero .eye-on{display:none}
+.sum-hero[aria-pressed="true"] .eye-on{display:block}
+.sum-hero[aria-pressed="true"] .eye-off{display:none}
 .sum-hero .sum-cur{font-size:19px;opacity:.65}
 .sum-hero .sum-value{font-size:58px;font-weight:600;line-height:1}
 .sum-side{flex:none;text-align:left;padding-bottom:10px}
@@ -479,7 +487,8 @@ ul{margin:0;padding:0;list-style:none}
 .tx.payment .tx-label,.tx.payment .tx-amount{color:var(--brand-700)}
 .tx-when{display:block;font-size:13px;color:var(--color-neutral-700);margin-top:2px}
 .tx-amount{flex:none;font-size:20px;font-weight:600}
-.tx-del{color:var(--color-neutral-600)}
+.tx-del,.tx-edit{color:var(--color-neutral-600)}
+.tx-edit:active{color:var(--brand-700);background:var(--brand-100)}
 .tx-del:active{color:var(--color-accent-2-700);background:var(--color-accent-2-100)}
 
 .empty-line{
