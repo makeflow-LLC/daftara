@@ -4,7 +4,7 @@
 import { cpSync, rmSync, mkdirSync } from 'node:fs';
 
 const FILES = [
-  'index.html', 'app.css', 'app.js', 'db.js', 'native.js', 'sw.js',
+  'index.html', 'app.css', 'app.js', 'db.js', 'native.js', 'pdf.js', 'sw.js',
   'manifest.json', '_headers', '.nojekyll', 'icons', 'vendor'
 ];
 

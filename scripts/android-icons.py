@@ -11,7 +11,6 @@ from PIL import Image, ImageDraw
 
 RES = 'android/app/src/main/res'
 BRAND = (14, 122, 81, 255)    # خلفية الأيقونة القابلة للقص
-PAPER = (243, 242, 242, 255)  # خلفية شاشة البداية
 
 maskable = Image.open('icons/icon-maskable-512.png').convert('RGBA')
 plain = Image.open('icons/icon-512.png').convert('RGBA')
@@ -40,13 +39,10 @@ for name, k in DENSITIES.items():
     rnd.putalpha(mask)
     rnd.save(f'{d}/ic_launcher_round.png')
 
-# شاشة البداية: ورق فاتح وفي وسطه الأيقونة
+# شاشة البداية: أخضر صافٍ، تكمله شاشة الدخول المتحركة داخل التطبيق بلا وميض
 for f in glob.glob(f'{RES}/drawable*/splash.png'):
     w, h = Image.open(f).size
-    img = Image.new('RGBA', (w, h), PAPER)
-    s = round(min(w, h) * 0.28)
-    img.paste(plain.resize((s, s), Image.LANCZOS), ((w - s) // 2, (h - s) // 2))
-    img.convert('RGB').save(f)
+    Image.new('RGB', (w, h), BRAND[:3]).save(f)
 
 with open(f'{RES}/values/ic_launcher_background.xml', 'w') as fh:
     fh.write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'

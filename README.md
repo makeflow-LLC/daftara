@@ -80,6 +80,7 @@ var CACHE_VERSION = 'v1';   // → 'v2'
 | `app.css` | Everything visual. Mobile-first, RTL, system fonts only. |
 | `db.js` | Dexie setup, all IndexedDB reads/writes, backup validation. Exposes `window.DB`. |
 | `app.js` | Screens, navigation, number pad, WhatsApp statement, backup/restore. |
+| `pdf.js` | Customer statement as PDF: drawn on a canvas (the browser shapes the Arabic with the device fonts), each page embedded as a JPEG in a hand-written PDF. No library, no bundled font. |
 | `native.js` | Android-only additions (auto backup to `Documents/Daftara`, native share). No-op in a browser. |
 | `sw.js` | Cache-first service worker for the app shell. |
 | `manifest.json` | Standalone, RTL, portrait, theme colour, 192/512 icons. |
@@ -155,6 +156,10 @@ the owner picks with Android's file picker (Downloads, Drive, SD card…), or se
 share sheet (WhatsApp…). The app is also registered for `.json` files, so «فتح بواسطة دفترة»
 from a file manager or WhatsApp offers to merge the file or replace the ledger. Both live in
 `android/app/src/main/java/com/makeflow/daftara/DaftaraFilesPlugin.java`.
+
+Deleting a customer or replacing the whole ledger from a backup asks for the fingerprint (or
+the phone PIN) after the confirm sheet; in the browser, or on a phone with no fingerprint or
+PIN, the confirm sheet alone is enough.
 
 Settings also offers a fingerprint lock (Android only). The prompt accepts the phone's own
 PIN/pattern as a fallback, the app relocks after a minute in the background, and it never

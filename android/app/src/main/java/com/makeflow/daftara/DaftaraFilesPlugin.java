@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
+import android.util.Base64;
 import androidx.activity.result.ActivityResult;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -19,8 +20,9 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * ملفات دفترة على أندرويد:
- *  - saveAs: يفتح منتقي الملفات في النظام ليختار صاحب المحل أين يحفظ النسخة
- *    (التنزيلات، Drive، بطاقة الذاكرة...) ثم يكتبها هناك.
+ *  - saveAs: يفتح منتقي الملفات في النظام ليختار صاحب المحل أين يحفظ الملف
+ *    (التنزيلات، Drive، بطاقة الذاكرة...) ثم يكتبه هناك: نص (data) أو ثنائي (base64)
+ *    مثل كشف الحساب PDF.
  *  - فتح ملف .json من مدير الملفات أو واتساب بـ «فتح بواسطة دفترة»: يُحفظ رابطه
  *    ويُطلق الحدث fileOpened، ويقرؤه التطبيق بـ takeOpenedFile.
  */
@@ -95,7 +97,7 @@ public class DaftaraFilesPlugin extends Plugin {
     public void saveAs(PluginCall call) {
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("application/json");
+        intent.setType(call.getString("mime", "application/json"));
         intent.putExtra(Intent.EXTRA_TITLE, call.getString("filename", "daftara-backup.json"));
         startActivityForResult(call, intent, "saveAsResult");
     }
@@ -112,7 +114,8 @@ public class DaftaraFilesPlugin extends Plugin {
         }
         try (OutputStream out = getContext().getContentResolver().openOutputStream(data.getData())) {
             if (out == null) throw new Exception("no stream");
-            out.write(call.getString("data", "").getBytes(StandardCharsets.UTF_8));
+            String b64 = call.getString("base64");
+            out.write(b64 != null ? Base64.decode(b64, Base64.DEFAULT) : call.getString("data", "").getBytes(StandardCharsets.UTF_8));
             ret.put("saved", true);
             call.resolve(ret);
         } catch (Exception e) {

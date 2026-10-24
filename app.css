@@ -703,3 +703,159 @@ button.sum-hero{
 
 .dialog-msg{margin:0 0 var(--space-4);font-size:16px;line-height:1.6;color:var(--color-neutral-800)}
 
+
+/* ================================================================
+   11. الألوان والحركة — طبقة أخيرة فوق Broadsheet
+   هوية MakeFlow: تدرّج أخضر ← أزرق بترولي، وألوان مميِّزة للزبائن،
+   وزوايا أنعم. الأرجواني يبقى للديون، والأخضر للدفعات.
+================================================================ */
+:root{
+  --grad-brand:linear-gradient(135deg,#0e7a51 0%,#0b6b63 55%,#0a5577 100%);
+  --grad-debt:linear-gradient(135deg,#e2367f 0%,#aa0b56 100%);
+  --grad-pay:linear-gradient(135deg,#1f9d6c 0%,#0b6644 100%);
+  --amber-100:#fff6e5;--amber-500:#f0a020;--amber-800:#7a4b00;
+  --radius-md:12px;
+  --radius-lg:20px;
+}
+
+/* ---- شاشة الدخول ---- */
+.splash{
+  position:fixed;inset:0;z-index:100;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;overflow:hidden;
+  background:var(--grad-brand);color:#fff;text-align:center;
+  transition:opacity .45s ease,transform .45s ease;
+}
+.splash.out{opacity:0;transform:scale(1.04);pointer-events:none}
+.splash-orb{position:absolute;border-radius:50%;filter:blur(2px);opacity:.18;background:#fff}
+.orb-a{width:340px;height:340px;top:-120px;right:-110px;animation:drift 7s ease-in-out infinite alternate}
+.orb-b{width:220px;height:220px;bottom:-70px;left:-60px;background:#5cf0b4;opacity:.16;animation:drift 6s ease-in-out infinite alternate-reverse}
+.orb-c{width:90px;height:90px;bottom:22%;right:12%;background:#ff90b1;opacity:.22;animation:drift 5s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate(18px,24px) scale(1.08)}}
+.splash-logo{margin-bottom:10px;animation:logoIn .7s cubic-bezier(.2,1.4,.4,1) both}
+.splash-logo svg{filter:drop-shadow(0 12px 24px rgba(0,0,0,.25))}
+@keyframes logoIn{from{transform:scale(.4) rotate(-12deg);opacity:0}to{transform:none;opacity:1}}
+.lg-line{transform-box:fill-box;transform-origin:right center}
+.splash .lg-line{animation:lineIn .45s cubic-bezier(.2,.8,.2,1) both}
+.splash .lg-l1{animation-delay:.45s}.splash .lg-l2{animation-delay:.6s}.splash .lg-l3{animation-delay:.75s}
+@keyframes lineIn{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.splash-name{font-size:46px;font-weight:700;line-height:1.1;animation:riseIn .5s .55s ease-out both}
+.splash-tag{font-size:16px;opacity:.88;animation:riseIn .5s .75s ease-out both}
+.splash-by{
+  position:absolute;bottom:calc(var(--sab) + 34px);
+  font-size:13px;letter-spacing:.04em;opacity:.85;
+  animation:riseIn .5s .95s ease-out both;
+}
+.splash-by b{font-family:system-ui,sans-serif;font-weight:700;letter-spacing:.06em}
+@keyframes riseIn{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .splash *,.splash{animation:none !important;transition:none !important}
+}
+
+/* ---- الإعداد والقفل ---- */
+.setup-hero{
+  margin:calc(-1 * (var(--sat) + var(--space-6))) calc(-1 * var(--space-4)) var(--space-6);
+  padding:calc(var(--sat) + var(--space-8)) var(--space-4) var(--space-6);
+  background:var(--grad-brand);color:#fff;
+  border-radius:0 0 28px 28px;
+}
+.setup-hero .setup-sub{color:rgba(255,255,255,.88);margin-bottom:var(--space-2)}
+.setup-hero .setup-logo svg{filter:drop-shadow(0 8px 18px rgba(0,0,0,.22))}
+.setup-by{text-align:center;font-size:12px;opacity:.8;margin:0}
+.setup-by b{font-family:system-ui,sans-serif;letter-spacing:.06em}
+.lock{background:var(--grad-brand);color:#fff}
+.lock .setup-sub{color:rgba(255,255,255,.88)}
+.lock .setup-step{justify-content:center}
+.lock .setup-bottom .btn-primary{background:#fff;color:var(--brand-700)}
+.made-by{text-align:center;font-size:12px;color:var(--color-neutral-600);margin:var(--space-3) 0 0}
+.made-by b{font-family:system-ui,sans-serif;letter-spacing:.06em;color:var(--brand-700)}
+
+/* ---- الأزرار ---- */
+.btn-primary{background:var(--grad-brand);box-shadow:0 6px 16px rgba(14,122,81,.28)}
+.btn-primary:active{filter:brightness(.92)}
+.btn-debt,.btn-danger{background:var(--grad-debt);box-shadow:0 6px 16px rgba(170,11,86,.24)}
+.btn-pay-solid{background:var(--grad-pay)}
+.btn-pay{background:var(--brand-100);border-color:transparent}
+.btn-debt:active,.btn-danger:active,.btn-pay-solid:active{filter:brightness(.92)}
+
+/* ---- الرئيسية ---- */
+.kicker{
+  display:inline-block;padding:2px 10px;border-radius:999px;
+  background:var(--brand-100);color:var(--brand-700);letter-spacing:.08em;
+}
+.summary{
+  position:relative;overflow:hidden;
+  margin:0 var(--space-4) var(--space-4);
+  padding:var(--space-4);
+  border-radius:var(--radius-lg);
+  background:var(--grad-brand);color:#fff;
+  box-shadow:0 10px 24px rgba(11,95,99,.28);
+}
+.summary::after{
+  content:"";position:absolute;width:180px;height:180px;border-radius:50%;
+  left:-50px;top:-70px;background:rgba(255,255,255,.08);pointer-events:none;
+}
+.summary .label{color:rgba(255,255,255,.82)}
+.summary .sum-hero{color:#fff}
+.summary .sum-eye{color:rgba(255,255,255,.85)}
+.summary .sum-count{color:#fff}
+.summary .sum-hero .sum-value{font-size:52px}
+.backup-line{
+  padding:var(--space-2) var(--space-3);
+  border-radius:var(--radius-md);
+  background:var(--amber-100);color:var(--amber-800);
+}
+.backup-line .dot{background:var(--amber-500)}
+.search-row{
+  margin:0 var(--space-4) var(--space-3);padding:0 var(--space-3);
+  border:1px solid var(--color-divider);border-radius:14px;background:#fff;
+}
+.search-row:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-100)}
+.sortbar{gap:var(--space-2)}
+.sort{
+  min-height:40px;padding:0 14px;margin:4px 0;
+  border:0;border-radius:999px;background:var(--color-neutral-200);
+}
+.sort.on{background:var(--brand);color:#fff;border:0}
+
+/* ألوان الزبائن */
+.row-mark{font-family:var(--font-ar);font-weight:700}
+.av-0{background:#e8f5ee;color:#0b6644}
+.av-1{background:#e6f0fb;color:#1d5fa8}
+.av-2{background:#fff1e2;color:#a55a00}
+.av-3{background:#f3ebfd;color:#6b3fb3}
+.av-4{background:#fff1f4;color:#aa0b56}
+.av-5{background:#e4f6f7;color:#0d6f78}
+
+/* ---- صفحة الزبون ---- */
+.balance{
+  margin:var(--space-2) var(--space-4) var(--space-4);
+  padding:var(--space-4);
+  border-radius:var(--radius-lg);
+  background:var(--color-neutral-200);
+}
+.balance.owed{background:var(--grad-debt);color:#fff;box-shadow:0 10px 24px rgba(170,11,86,.25)}
+.balance.credit{background:var(--grad-pay);color:#fff;box-shadow:0 10px 24px rgba(11,102,68,.25)}
+.balance.owed .balance-row,.balance.credit .balance-row{color:#fff}
+.balance.owed .label,.balance.credit .label{color:rgba(255,255,255,.85)}
+.tx.debt .tx-amount,.tx.payment .tx-amount{
+  padding:2px 10px;border-radius:999px;font-size:18px;
+}
+.tx.debt .tx-amount{background:var(--color-accent-2-100)}
+.tx.payment .tx-amount{background:var(--brand-100)}
+
+/* ---- الشيتات والحقول ---- */
+.sheet{border-radius:24px 24px 0 0}
+.field input,.field select{background:#fff;border-radius:var(--radius-md)}
+.field input:focus,.field select:focus{box-shadow:0 0 0 3px var(--brand-100)}
+.amount-display{border-radius:var(--radius-lg)}
+.quick-btn{border-radius:999px}
+.key{border-radius:14px}
+
+/* رقم واتساب: المقدمة + الرقم */
+.phone-row{display:flex;gap:var(--space-2);direction:ltr}
+.phone-row select{flex:none;width:auto;min-width:92px;padding:0 12px}
+.phone-row input{flex:1;min-width:0}
+.field-hint{margin:6px 0 0;font-size:13px;min-height:1em}
+.field-hint.ok{color:var(--brand-700)}
+.field-hint.bad{color:var(--color-accent-2-700)}

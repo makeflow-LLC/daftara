@@ -10,6 +10,8 @@
   var DEFAULT_COUNTRY_CODE = '970';
   var BACKUP_REMINDER_DAYS = 1;
   var BACKUP_EVERY_HOURS = 24;    // يُسأل صاحب المحل أين يحفظ نسخة جديدة كل 24 ساعة
+  var SPLASH_MIN_MS = 1500;       // شاشة الدخول المتحركة لا تُقطع قبل اكتمال حركتها
+  var bootAt = Date.now();
   var OVERDUE_DAYS = 30;
 
   var CURRENCIES = [
@@ -191,7 +193,7 @@
   }
 
   function onRemoved(e) {
-    if (e.t === 'ov' && e.n === 'dialog') closeDialog(false);
+    if (e.t === 'ov' && e.n === 'dialog') { closeDialog(dialogPick); dialogPick = false; }
   }
 
   window.addEventListener('popstate', function (ev) {
@@ -259,12 +261,14 @@
     r(value);
   }
 
-  $('dialog-ok').addEventListener('click', function () { closeDialog(true); goBack(); });
-  $('dialog-alt').addEventListener('click', function () { closeDialog('alt'); goBack(); });
-  $('dialog-cancel').addEventListener('click', function () { closeDialog(false); goBack(); });
-  $('dialog').querySelector('.sheet-backdrop').addEventListener('click', function () {
-    closeDialog(false); goBack();
-  });
+  // الجواب يصل بعد أن يكتمل إغلاق المربع (popstate)، لا قبله: وإلا قد يفتح الفعل
+  // التالي مربعًا جديدًا يغلقه «رجوع» المربع القديم المتأخر.
+  var dialogPick = false;
+  function pick(value) { dialogPick = value; goBack(); }
+  $('dialog-ok').addEventListener('click', function () { pick(true); });
+  $('dialog-alt').addEventListener('click', function () { pick('alt'); });
+  $('dialog-cancel').addEventListener('click', function () { pick(false); });
+  $('dialog').querySelector('.sheet-backdrop').addEventListener('click', function () { pick(false); });
 
   /* ---------------- 1. شاشة الإعداد ---------------- */
   function fillCurrencySelect(sel, value) {
@@ -457,7 +461,7 @@
             ? '<span class="row-amount num credit">' + fmtSigned(e.balance) + '</span>'
             : '<span class="row-amount settled">مسدّد</span>');
       return '<li><button class="row" type="button" data-id="' + e.c.id + '">' +
-        '<span class="row-mark' + (owed ? ' owed' : '') + '" aria-hidden="true">' +
+        '<span class="row-mark av-' + avatarHue(e.c.name) + '" aria-hidden="true">' +
           esc(String(e.c.name).trim().charAt(0)) + '</span>' +
         '<span class="row-main">' +
           '<span class="row-name">' + esc(e.c.name) + '</span>' +
@@ -516,6 +520,13 @@
   function openCustomer(id) {
     pushView('customer', id);
     $('cust-scroll').scrollTop = 0;
+  }
+
+  // لون ثابت لكل زبون من اسمه (6 ألوان)، حتى تتميّز الأسماء في القائمة بنظرة
+  function avatarHue(name) {
+    var h = 0, s = String(name);
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h % 6;
   }
 
   /* ---------------- 2. صفحة الزبون ---------------- */
@@ -692,7 +703,10 @@
     sheetAfter = opts.after || null;
     $('sheet-title').textContent = opts.title;
     $('sheet-name').value = opts.name || '';
-    $('sheet-phone').value = opts.phone || '';
+    var sp = splitPhone(opts.phone);
+    $('sheet-cc').value = codeInfo(sp.cc) ? sp.cc : DEFAULT_COUNTRY_CODE;
+    $('sheet-phone').value = sp.local;
+    paintPhoneHint();
     $('sheet-err').hidden = true;
     $('sheet-delete').hidden = opts.mode !== 'edit';
     $('sheet-msg').hidden = !opts.msg;
@@ -726,12 +740,18 @@
   $('sheet-form').addEventListener('submit', function (ev) {
     ev.preventDefault();
     var name = $('sheet-name').value.trim();
-    var phone = $('sheet-phone').value.trim();
     if (!name) {
       $('sheet-err').hidden = false;
       $('sheet-name').focus();
       return;
     }
+    var pr = readPhone();
+    if (!pr.ok) {
+      paintPhoneHint();
+      $('sheet-phone').focus();
+      return;
+    }
+    var phone = pr.phone;
     var after = sheetAfter;
     var id = sheetId;
     var p;
@@ -765,9 +785,86 @@
       danger: true
     }).then(function (yes) {
       if (!yes) return;
-      return DB.deleteCustomer(id).then(loadData).then(resetToHome);
+      return confirmIdentity().then(function (pass) {
+        if (!pass) return alertBox('لم يُحذف الزبون', 'الحذف يحتاج تأكيد البصمة أو رمز قفل الجوال.');
+        return DB.deleteCustomer(id).then(loadData).then(resetToHome);
+      });
     });
   });
+
+  /* ---------------- رقم واتساب: مقدمة الدولة + الرقم ----------------
+     يُحفظ الرقم دوليًا كاملًا (+970599123456) حتى يصل كشف الحساب لواتساب الصحيح.
+     local: طول الرقم بعد المقدمة، و start: بماذا يبدأ (للأرقام المعروفة). */
+  var PHONE_CODES = [
+    { cc: '970', name: 'فلسطين', len: [9], start: /^5[69]/, example: '599 123 456' },
+    { cc: '972', name: 'الداخل', len: [9], start: /^5/, example: '501 234 567' },
+    { cc: '20', name: 'مصر', len: [10], start: /^1/, example: '100 123 4567' },
+    { cc: '962', name: 'الأردن', len: [9], start: /^7/, example: '790 123 456' },
+    { cc: '966', name: 'السعودية', len: [9], start: /^5/, example: '501 234 567' },
+    { cc: '971', name: 'الإمارات', len: [9], start: /^5/, example: '501 234 567' },
+    { cc: '974', name: 'قطر', len: [8], start: /^[3-7]/, example: '3312 3456' },
+    { cc: '90', name: 'تركيا', len: [10], start: /^5/, example: '501 234 5678' }
+  ];
+
+  $('sheet-cc').innerHTML = PHONE_CODES.map(function (p) {
+    // المقدمة وحدها في القائمة: خلط العربي مع «+970» داخل قائمة منسدلة يقلب الإشارة
+    // في بعض المتصفحات. اسم الدولة يظهر في السطر تحت الحقل.
+    return '<option value="' + p.cc + '">+' + p.cc + '</option>';
+  }).join('');
+
+  function codeInfo(cc) {
+    for (var i = 0; i < PHONE_CODES.length; i++) if (PHONE_CODES[i].cc === cc) return PHONE_CODES[i];
+    return null;
+  }
+
+  // رقم محفوظ (قديم محلي أو دولي) ← {cc, local} لتعبئة الحقلين
+  function splitPhone(stored) {
+    var d = normalizePhone(stored);
+    if (!d) return { cc: DEFAULT_COUNTRY_CODE, local: '' };
+    for (var i = 0; i < PHONE_CODES.length; i++) {
+      if (d.indexOf(PHONE_CODES[i].cc) === 0) return { cc: PHONE_CODES[i].cc, local: d.slice(PHONE_CODES[i].cc.length) };
+    }
+    return { cc: DEFAULT_COUNTRY_CODE, local: d };
+  }
+
+  // يقرأ الحقلين ويعيد {ok, phone:'+970…', msg}. الحقل الفارغ مقبول (الرقم اختياري).
+  function readPhone() {
+    var raw = $('sheet-phone').value.trim();
+    var cc = $('sheet-cc').value;
+    if (!raw) return { ok: true, phone: '' };
+    // لصق رقم دولي كامل (+970… أو 00970…): نأخذ المقدمة منه
+    var digits = raw.replace(/\D/g, '');
+    if (/^\+|^00/.test(raw)) {
+      digits = digits.replace(/^00/, '');
+      for (var i = 0; i < PHONE_CODES.length; i++) {
+        if (digits.indexOf(PHONE_CODES[i].cc) === 0) { cc = PHONE_CODES[i].cc; digits = digits.slice(cc.length); break; }
+      }
+    }
+    var local = digits.replace(/^0+/, '');   // 0599… ← 599…
+    var info = codeInfo(cc);
+    var ok = info && info.len.indexOf(local.length) !== -1 && info.start.test(local);
+    return ok
+      ? { ok: true, phone: '+' + cc + local, cc: cc, local: local }
+      : { ok: false, cc: cc, msg: info
+          ? 'رقم غير صحيح لـ +' + cc + ' (' + info.name + '). مثال: ' + info.example
+          : 'رقم غير صحيح' };
+  }
+
+  function paintPhoneHint() {
+    var r = readPhone();
+    var hint = $('sheet-phone-hint');
+    if (r.cc && r.cc !== $('sheet-cc').value) $('sheet-cc').value = r.cc;
+    var info = codeInfo($('sheet-cc').value);
+    if (!$('sheet-phone').value.trim()) {
+      hint.className = 'field-hint';
+      hint.textContent = info ? info.name + ' — مثال: ' + info.example : '';
+      return;
+    }
+    hint.className = 'field-hint ' + (r.ok ? 'ok' : 'bad');
+    hint.textContent = r.ok ? '✓ ' + info.name + ' — سيصل كشف الحساب إلى واتساب ‎' + r.phone : r.msg;
+  }
+  $('sheet-phone').addEventListener('input', paintPhoneHint);
+  $('sheet-cc').addEventListener('change', paintPhoneHint);
 
   /* ---------------- كشف الحساب عبر واتساب ---------------- */
   // "0599123456" ← رقم محلي  →  "970599123456"
@@ -852,9 +949,9 @@
 
     var phone = normalizePhone(e.c.phone);
     $('st-target').textContent = phone
-      ? 'إرسال إلى ' + e.c.phone
-      : 'لا يوجد رقم هاتف لهذا الزبون';
-    $('st-send').disabled = !phone;
+      ? 'واتساب: ‎+' + phone
+      : 'لا يوجد رقم واتساب لهذا الزبون — PDF يعمل بدونه.';
+    $('st-send').lastChild.textContent = phone ? 'أرسل عبر واتساب' : 'أضف رقم واتساب للإرسال';
     pushOverlay('statement');
   }
 
@@ -865,7 +962,17 @@
     var e = entry(stId);
     if (!e) return;
     var phone = normalizePhone(e.c.phone);
-    if (!phone) return;
+    if (!phone) {
+      var id = stId;
+      goBackThen(function () {
+        openEditCustomer(id, {
+          msg: 'أضف رقم واتساب الزبون لإرسال كشف الحساب.',
+          focusPhone: true,
+          after: function (cid) { openStatement(cid); }
+        });
+      });
+      return;
+    }
     var url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(buildStatement(e));
     // داخل التطبيق يفتح Capacitor الرابط في واتساب مباشرة
     var w = Native.isNative ? null : window.open(url, '_blank', 'noopener');
@@ -873,20 +980,37 @@
     goBack();
   });
 
-  // زر «أرسل كشف الحساب» في صفحة الزبون: بلا رقم نطلبه أولًا، وإلا نعرض المعاينة
-  function sendStatement(id) {
-    var e = entry(id);
+  // زر «كشف الحساب» في صفحة الزبون: المعاينة دائمًا (PDF لا يحتاج رقمًا، وواتساب يطلبه هناك)
+  function sendStatement(id) { openStatement(id); }
+
+  // كشف الحساب PDF: كل الحركات، مع الرصيد بعد كل حركة
+  $('st-pdf').addEventListener('click', function () {
+    var e = entry(stId);
     if (!e) return;
-    if (!normalizePhone(e.c.phone)) {
-      openEditCustomer(id, {
-        msg: 'أضف رقم هاتف الزبون لإرسال كشف الحساب عبر واتساب.',
-        focusPhone: true,
-        after: function (cid) { sendStatement(cid); }
+    var btn = $('st-pdf');
+    btn.disabled = true;
+    var phone = normalizePhone(e.c.phone);
+    StatementPdf.make({
+      shop: S.shopName, currency: S.currency, name: e.c.name, phone: phone ? '+' + phone : '',
+      tx: e.tx, fmtNum: fmt, fmtDate: fmtDate
+    }).then(function (bytes) {
+      btn.disabled = false;
+      var safe = String(e.c.name).replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'زبون';
+      return deliverFile({
+        name: 'كشف حساب - ' + safe + ' - ' + ymd() + '.pdf',
+        downloadName: 'daftara-statement-' + ymd() + '.pdf',
+        mime: 'application/pdf',
+        bytes: bytes,
+        title: 'كشف حساب PDF',
+        msg: 'كشف حساب «' + e.c.name + '» جاهز. ماذا تريد أن تفعل به؟',
+        saveLabel: 'احفظه في مكان تختاره',
+        sendLabel: 'أرسله (واتساب وغيره)'
       });
-      return;
-    }
-    openStatement(id);
-  }
+    }).catch(function () {
+      btn.disabled = false;
+      alertBox('تعذّر إنشاء الملف', 'لم نستطع إنشاء كشف PDF. حاول مرة أخرى.');
+    });
+  });
 
   /* ---------------- 6. الإعدادات (شيت) ---------------- */
   function openSettings() {
@@ -948,7 +1072,7 @@
   function unlock() {
     if (locking) return locking;
     locking = Native.canLock().then(function (ok) {
-      if (!ok) return;
+      if (!ok) { $('screen-lock').hidden = true; return; }
       $('screen-lock').hidden = false;
       return new Promise(function (resolve) {
         function attempt() {
@@ -964,6 +1088,13 @@
       });
     }).then(function () { locking = null; });
     return locking;
+  }
+
+  // تأكيد الهوية قبل الأفعال التي لا رجعة فيها (حذف زبون، استبدال الدفتر).
+  // في المتصفح، أو جوال بلا بصمة ولا رمز قفل، يكفي مربع التأكيد.
+  function confirmIdentity() {
+    if (!Native.isNative) return Promise.resolve(true);
+    return Native.canLock().then(function (ok) { return ok ? Native.verify() : true; });
   }
 
   if (Native.onResume) {
@@ -1015,57 +1146,70 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
   }
 
-  // يسأل صاحب المحل أين يحفظ النسخة: مكان يختاره على الجوال، أو يرسلها (واتساب...)
+  // يسأل أين يذهب الملف: مكان يختاره صاحب المحل على الجوال، أو يُرسَل (واتساب...).
+  // f: {name, mime, text | bytes, title, msg, saveLabel, sendLabel, cancel}
+  // يعيد true إن حُفظ أو أُرسل، وnull إن ألغى.
+  function deliverFile(f) {
+    var blob = new Blob([f.bytes || f.text], { type: f.mime });
+    var file = null;
+    try { file = new File([blob], f.name, { type: f.mime }); } catch (e) { file = null; }
+    var nativeFile = { name: f.name, mime: f.mime, title: f.title, text: f.bytes ? undefined : f.text,
+                       base64: f.bytes ? StatementPdf.toBase64(f.bytes) : undefined };
+    var shareable = Native.isNative || !!(file && navigator.share && navigator.canShare &&
+      navigator.canShare({ files: [file] }));
+
+    function save() {
+      // اسم التنزيل في المتصفح بحروف لاتينية: بعض المتصفحات تتجاهل الأسماء العربية
+      if (!Native.isNative) { downloadBlob(blob, f.downloadName || f.name); return Promise.resolve(true); }
+      return Native.saveAs(nativeFile).then(function (saved) { return saved || null; }, function () {
+        alertBox('تعذّر الحفظ', 'لم نستطع الحفظ في هذا المكان. جرّب مكانًا آخر أو أرسل الملف.');
+        return null;
+      });
+    }
+    function send() {
+      if (Native.isNative) {
+        return Native.shareFile(nativeFile).catch(function () {
+          alertBox('تعذّرت المشاركة', 'لم نستطع فتح شاشة المشاركة.');
+          return null;
+        });
+      }
+      return navigator.share({ files: [file], title: f.title })
+        .then(function () { return true; })
+        .catch(function (err) {
+          if (err && err.name === 'AbortError') return null;   // ألغى المستخدم
+          downloadBlob(blob, f.name);
+          return true;
+        });
+    }
+
+    return ask({
+      title: f.title,
+      msg: f.msg,
+      ok: Native.isNative ? f.saveLabel : 'نزّله على الجهاز',
+      alt: shareable ? f.sendLabel : '',
+      cancel: f.cancel || 'إلغاء'
+    }).then(function (choice) {
+      if (choice === true) return save();
+      if (choice === 'alt') return send();
+      return null;
+    });
+  }
+
   // opts: {title, msg, later} — later يجعل زر الإلغاء «لاحقًا»
   function doBackup(opts) {
     opts = opts || {};
     S.backupBusy = true;
     return DB.exportAll().then(function (data) {
-      var json = JSON.stringify(data, null, 2);
-      var filename = 'daftara-backup-' + ymd() + '.json';
-      var blob = new Blob([json], { type: 'application/json' });
-      var file = null;
-      try { file = new File([blob], filename, { type: 'application/json' }); } catch (e) { file = null; }
-
-      var shareable = Native.isNative || !!(file && navigator.share && navigator.canShare &&
-        navigator.canShare({ files: [file] }));
-
-      function save() {
-        if (!Native.isNative) { downloadBlob(blob, filename); return Promise.resolve(true); }
-        return Native.saveAs(filename, json).then(function (saved) { return saved || null; }, function () {
-          alertBox('تعذّر الحفظ', 'لم نستطع الحفظ في هذا المكان. جرّب مكانًا آخر أو أرسل النسخة.');
-          return null;
-        });
-      }
-      function send() {
-        if (Native.isNative) {
-          return Native.shareBackup(filename, json).catch(function () {
-            alertBox('تعذّرت المشاركة', 'لم نستطع فتح شاشة المشاركة. النسخة التلقائية في ذاكرة الجوال ما زالت محفوظة.');
-            return null;
-          });
-        }
-        return navigator.share({ files: [file], title: 'نسخة احتياطية — دفترة' })
-          .then(function () { return true; })
-          .catch(function (err) {
-            if (err && err.name === 'AbortError') return null;   // ألغى المستخدم
-            downloadBlob(blob, filename);
-            return true;
-          });
-      }
-
-      var step = ask({
+      return deliverFile({
+        name: 'daftara-backup-' + ymd() + '.json',
+        mime: 'application/json',
+        text: JSON.stringify(data, null, 2),
         title: opts.title || 'نسخة احتياطية',
         msg: opts.msg || 'أين تريد أن تحتفظ بالنسخة؟',
-        ok: Native.isNative ? 'احفظها في مكان تختاره' : 'نزّلها على الجهاز',
-        alt: shareable ? 'أرسلها (واتساب وغيره)' : '',
+        saveLabel: 'احفظها في مكان تختاره',
+        sendLabel: 'أرسلها (واتساب وغيره)',
         cancel: opts.later ? 'لاحقًا' : 'إلغاء'
-      }).then(function (choice) {
-        if (choice === true) return save();
-        if (choice === 'alt') return send();
-        return null;
-      });
-
-      return step.then(function (done) {
+      }).then(function (done) {
         if (!done) return;
         var now = new Date().toISOString();
         S.lastBackupAt = now;
@@ -1173,6 +1317,15 @@
         danger: true
       }).then(function (yes) {
         if (!yes) return;
+        // في شاشة الإعداد لا يوجد دفتر يُمسح، فلا حاجة للبصمة
+        return (!$('screen-setup').hidden ? Promise.resolve(true) : confirmIdentity()).then(function (pass) {
+          if (!pass) return alertBox('لم تتم الاستعادة', 'استبدال الدفتر يحتاج تأكيد البصمة أو رمز قفل الجوال.');
+          return doRestore(data);
+        });
+      });
+  }
+
+  function doRestore(data) {
         return DB.importAll(data)
           .then(loadSettings)
           .then(loadData)
@@ -1187,7 +1340,6 @@
             }
             return alertBox('تمت الاستعادة', 'الدفتر الآن يحتوي على ' + S.customers.length + ' زبون.');
           });
-      });
   }
 
   // ملف .json فُتح من خارج التطبيق (مدير الملفات، واتساب)
@@ -1236,13 +1388,31 @@
     navigator.serviceWorker.register('sw.js').catch(function () {});
   }
 
+  // تختفي شاشة الدخول بعد اكتمال حركتها (أو فورًا تقريبًا لمن طلب تقليل الحركة في جواله)
+  function hideSplash() {
+    var el = $('splash');
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var wait = Math.max(0, (reduce ? 300 : SPLASH_MIN_MS) - (Date.now() - bootAt));
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        el.classList.add('out');
+        setTimeout(function () { el.hidden = true; resolve(); }, reduce ? 0 : 450);
+      }, wait);
+    });
+  }
+
   DB.open()
     .then(loadSettings)
     .then(loadData)
-    .then(function () { if (S.lockEnabled && Native.isNative) return unlock(); })
+    .then(function () {
+      // الدفتر يُرسم خلف شاشة الدخول، وشاشة القفل تغطيه قبل أن تختفي
+      var locked = S.lockEnabled && Native.isNative;
+      if (S.shopName) startApp();
+      if (locked) $('screen-lock').hidden = false;
+      return hideSplash().then(function () { if (locked) return unlock(); });
+    })
     .then(function () {
       if (!S.shopName) showSetup();
-      else startApp();
       registerSW();
       if (Native.start) Native.start();
       setTimeout(onForeground, 600);

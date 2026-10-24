@@ -153,27 +153,29 @@
   };
 
   /* ---------- الحفظ والفتح ---------- */
-  // يعيد true إن حُفظ الملف، وfalse إن أغلق صاحب المحل المنتقي دون حفظ
-  Native.saveAs = function (filename, json) {
-    return Files.saveAs({ filename: filename, data: json }).then(function (r) { return !!r.saved; });
-  };
+  // إضافة الملفات من كود التطبيق نفسه (DaftaraFilesPlugin.java)؛ نتحقق منها احتياطًا
+  if (Files) {
+    // يعيد true إن حُفظ الملف، وfalse إن أغلق صاحب المحل المنتقي دون حفظ
+    // f: {name, mime, text} أو {name, mime, base64}
+    Native.saveAs = function (f) {
+      return Files.saveAs({ filename: f.name, mime: f.mime, data: f.text, base64: f.base64 })
+        .then(function (r) { return !!r.saved; });
+    };
 
-  // ملف فُتح بـ «فتح بواسطة دفترة»: {name, text} أو null
-  Native.takeOpenedFile = function () {
-    return Files.takeOpenedFile().then(function (r) { return r && r.text != null ? r : null; });
-  };
-  Native.onFileOpened = function (cb) { Files.addListener('fileOpened', cb); };
+    // ملف فُتح بـ «فتح بواسطة دفترة»: {name, text} أو null
+    Native.takeOpenedFile = function () {
+      return Files.takeOpenedFile().then(function (r) { return r && r.text != null ? r : null; });
+    };
+    Native.onFileOpened = function (cb) { Files.addListener('fileOpened', cb); };
+  }
 
-  // مشاركة ملف النسخة: يُكتب في الكاش ثم تُفتح شاشة المشاركة.
+  // مشاركة ملف (نسخة احتياطية أو كشف PDF): يُكتب في الكاش ثم تُفتح شاشة المشاركة.
   // يعيد true عند المشاركة، وnull إن ألغاها المستخدم.
-  Native.shareBackup = function (filename, json) {
-    return FS.writeFile({
-      path: filename,
-      data: json,
-      directory: 'CACHE',
-      encoding: 'utf8'
-    }).then(function (res) {
-      return Share.share({ title: 'نسخة احتياطية — دفترة', files: [res.uri] });
+  Native.shareFile = function (f) {
+    var opts = { path: f.name, directory: 'CACHE', data: f.base64 != null ? f.base64 : f.text };
+    if (f.base64 == null) opts.encoding = 'utf8';   // بدون encoding تُعامل البيانات كـ base64
+    return FS.writeFile(opts).then(function (res) {
+      return Share.share({ title: f.title || f.name, files: [res.uri] });
     }).then(function () { return true; }, function (err) {
       if (/cancel/i.test((err && err.message) || '')) return null;
       throw err;
