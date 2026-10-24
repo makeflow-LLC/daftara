@@ -18,18 +18,23 @@ android {
         }
     }
     // توقيع ثابت: بدونه لا يقبل أندرويد تثبيت نسخة جديدة فوق القديمة.
-    // GitHub Actions يستخدم مفتاحًا من الأسرار إن وُجد، وإلا المفتاح الموجود في المستودع.
+    // المفتاح لا يوجد في المستودع أبدًا: GitHub Actions يأخذه من أسرار المستودع
+    // (KEYSTORE_FILE وأخواته). بدونه — بناء محلي أو فرع تجريبي — يُوقَّع بمفتاح
+    // التطوير المؤقت، وهذا لا يصلح للتوزيع.
+    def releaseKey = System.getenv("KEYSTORE_FILE")
     signingConfigs {
         release {
-            storeFile file(System.getenv("KEYSTORE_FILE") ?: "../daftara-release.jks")
-            storePassword System.getenv("KEYSTORE_PASSWORD") ?: "daftara-release"
-            keyAlias System.getenv("KEY_ALIAS") ?: "daftara"
-            keyPassword System.getenv("KEY_PASSWORD") ?: "daftara-release"
+            if (releaseKey) {
+                storeFile file(releaseKey)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            }
         }
     }
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            signingConfig releaseKey ? signingConfigs.release : signingConfigs.debug
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

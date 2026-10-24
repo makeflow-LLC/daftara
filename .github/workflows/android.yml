@@ -31,8 +31,17 @@ jobs:
       - run: npm ci
       - run: npm run sync
 
-      # مفتاح التوقيع من أسرار المستودع إن أُضيف (ANDROID_KEYSTORE_B64 وأخواته)،
-      # وإلا يُستخدم android/daftara-release.jks الموجود في المستودع.
+      # مفتاح التوقيع من أسرار المستودع (ANDROID_KEYSTORE_B64 وأخواته) — لا يوجد في المستودع.
+      # main لا يُنشر بدونه أبدًا؛ الفروع الأخرى تُبنى بمفتاح تطوير مؤقت للاختبار فقط.
+      - name: Require the signing key on main
+        if: github.ref == 'refs/heads/main'
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Add the ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD repository secrets before releasing."
+            exit 1
+          fi
       - name: Signing key from secrets
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}

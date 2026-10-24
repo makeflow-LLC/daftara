@@ -9,7 +9,7 @@
 (function (global) {
   'use strict';
 
-  var DEXIE_CDN = 'https://cdn.jsdelivr.net/npm/dexie@4.0.11/dist/dexie.min.js';
+  // المكتبة من نسخة محلية فقط، لا من خادم خارجي: لو اختُرق الخادم لقرأ الكود المزيّف الدفتر كله
   var DEXIE_LOCAL = 'vendor/dexie.min.js';
 
   function loadScript(src) {
@@ -23,16 +23,9 @@
     });
   }
 
-  // المكتبة من الـ CDN مع نسخة محلية احتياطية.
-  // بدون إنترنت (أو داخل تطبيق أندرويد) نذهب للنسخة المحلية مباشرة حتى لا ننتظر مهلة الشبكة.
   function ensureDexie() {
     if (global.Dexie) return Promise.resolve();
-    var native = global.Capacitor && global.Capacitor.isNativePlatform && global.Capacitor.isNativePlatform();
-    var chain = (native || (global.navigator && global.navigator.onLine === false))
-      ? Promise.reject(new Error('offline'))
-      : loadScript(DEXIE_CDN);
-    return chain
-      .catch(function () { return loadScript(DEXIE_LOCAL); })
+    return loadScript(DEXIE_LOCAL)
       .then(function () {
         if (!global.Dexie) throw new Error('Dexie unavailable');
       });

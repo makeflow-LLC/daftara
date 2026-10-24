@@ -8,8 +8,8 @@ have no internet at all. Everything is local: no backend, no account, no login, 
 analytics, no cookies.
 
 - Vanilla HTML / CSS / JS — no framework, no build step, no bundler.
-- One dependency: [Dexie.js](https://dexie.org/) (IndexedDB wrapper), loaded from a CDN
-  with a local copy in `vendor/` as a fallback.
+- One dependency: [Dexie.js](https://dexie.org/) (IndexedDB wrapper), served from the
+  local copy in `vendor/` only. Nothing is loaded from a third-party host.
 - Works fully offline after the first load, including a cold start in airplane mode.
 - ~107 KB of app code, CSS, HTML and icons (Dexie adds ~94 KB).
 
@@ -164,10 +164,15 @@ Builds run in GitHub Actions (`.github/workflows/android.yml`): every push build
 boots it on an emulator; pushes to `main` also publish it to Releases. Latest APK:
 <https://github.com/makeflow-LLC/daftara/releases/latest/download/daftara.apk>
 
-Signing: the workflow uses the `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`,
-`ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` repository secrets when set, otherwise the
-committed `android/daftara-release.jks`. Android only installs an update over an app signed
-with the same key, so pick one before handing the APK out widely and keep it.
+Signing: the release key is never in the repository. The workflow reads it from the
+`ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and
+`ANDROID_KEY_PASSWORD` repository secrets, and a push to `main` fails rather than release
+without them. Other branches and local builds are signed with the throwaway debug key, fine
+for testing but not for handing out. Android only installs an update over an app signed with
+the same key, so keep the keystore and its password safe outside GitHub too.
+
+The Android app has no INTERNET permission (removed in the manifest with `tools:node`), so it
+cannot send data anywhere; WhatsApp links open the WhatsApp app.
 
 Local build (needs JDK 21 and the Android SDK): `npm ci && npm run apk`.
 Regenerate launcher icons and splash after changing `icons/`: `python3 scripts/android-icons.py`.

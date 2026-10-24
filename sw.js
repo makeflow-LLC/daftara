@@ -3,7 +3,7 @@
    الاستراتيجية: cache-first لهيكل التطبيق، مع اسم مخزن يحمل رقم النسخة.
    عند تحديث أي ملف: ارفع رقم CACHE_VERSION.
 ================================================================ */
-var CACHE_VERSION = 'v11';
+var CACHE_VERSION = 'v12';
 var CACHE_NAME = 'daftara-shell-' + CACHE_VERSION;
 
 // بدونها لا يفتح التطبيق أصلًا
@@ -63,8 +63,7 @@ self.addEventListener('fetch', function (event) {
   var url;
   try { url = new URL(req.url); } catch (e) { return; }
 
-  // طلبات خارجية (مثل مكتبة Dexie من الـ CDN): الشبكة فقط،
-  // وإن فشلت يتكفّل التطبيق بالنسخة المحلية المخزّنة.
+  // التطبيق لا يطلب شيئًا من خارج موقعه؛ أي طلب خارجي يمر إلى الشبكة كما هو.
   if (url.origin !== self.location.origin) return;
 
   // أي تنقّل يعود إلى صفحة التطبيق المخزّنة
