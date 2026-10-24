@@ -19,20 +19,27 @@ tap() {
     xy=$(python3 - "$1" <<'PY'
 import re, sys
 xml = open('ui.xml', encoding='utf-8', errors='ignore').read()
+want = sys.argv[1]
+exact, partial = [], []
 for node in re.findall(r'<node [^>]*>', xml):
     t = re.search(r' text="([^"]*)"', node); d = re.search(r'content-desc="([^"]*)"', node)
-    if sys.argv[1] in ((t.group(1) if t else ''), (d.group(1) if d else '')):
-        b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', node)
-        if b:
-            x1, y1, x2, y2 = map(int, b.groups())
-            if x2 > x1 and y2 > y1:
-                print((x1 + x2) // 2, (y1 + y2) // 2); break
+    labels = ((t.group(1) if t else ''), (d.group(1) if d else ''))
+    b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', node)
+    if not b: continue
+    x1, y1, x2, y2 = map(int, b.groups())
+    if x2 <= x1 or y2 <= y1: continue
+    hit = ((x1 + x2) // 2, (y1 + y2) // 2)
+    if want in labels: exact.append(hit)
+    elif any(want in l and len(l) <= len(want) + 4 for l in labels): partial.append(hit)
+# المطابقة التامة أولًا؛ وإلا نص قريب منه (زر فيه أيقونة ومسافة زائدة مثلًا)
+for x, y in exact[:1] or partial[:1]:
+    print(x, y)
 PY
 )
     if [ -n "$xy" ]; then echo "tap '$1' at $xy"; adb shell input tap $xy; return 0; fi
     sleep 2
   done
-  echo "::error::'$1' not found on screen"; grep -o 'text="[^"]*"' ui.xml | sort -u | head -40 || true
+  echo "::error::'$1' not found on screen"; grep -o "<node [^>]*$1[^>]*>" ui.xml | head -5 || true
   return 1
 }
 
